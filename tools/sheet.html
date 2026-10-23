@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>角色圖組合工具｜咖啡巷物語</title>
+<style>
+  :root { --ink: #4a2f22; --paper: #fbf3e4; --line: #c9a87a; --green: #5f9e45; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 16px; font-family: 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif; background: #efe2cc; color: var(--ink); }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  p { margin: 4px 0 12px; line-height: 1.6; font-size: 14px; }
+  .grid { display: grid; grid-template-columns: repeat(4, 160px); gap: 10px; }
+  .slot { width: 160px; height: 240px; border: 2px dashed var(--line); border-radius: 10px; background: repeating-conic-gradient(#f4ead8 0 25%, #fffaf2 0 50%) 0 0 / 20px 20px; position: relative; display: flex; align-items: flex-end; justify-content: center; cursor: pointer; overflow: hidden; }
+  .slot.has { border-style: solid; border-color: var(--green); }
+  .slot b { position: absolute; top: 4px; left: 6px; font-size: 12px; background: rgba(255,255,255,.85); padding: 1px 6px; border-radius: 6px; }
+  .slot canvas { width: 160px; height: 240px; }
+  .slot input { display: none; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 12px 0; }
+  button, label.btn { font: inherit; font-weight: 700; padding: 8px 16px; border-radius: 10px; border: 2px solid var(--ink); background: #f9ecd3; cursor: pointer; }
+  button.go { background: var(--green); color: #fff; border-color: #3f7a2e; }
+  input[type=text] { font: inherit; padding: 6px 10px; border-radius: 8px; border: 2px solid var(--ink); width: 14em; }
+  .foot { position: absolute; left: 0; right: 0; bottom: 8px; border-top: 1px dashed #d9775f; pointer-events: none; }
+</style>
+</head>
+<body>
+<h1>角色圖組合工具</h1>
+<p>把 AI 生成的 12 張動作圖（建議先去背成透明 PNG）拖進對應格子，工具會自動裁掉空白、等比例縮放、讓腳底對齊紅線，最後輸出成遊戲用的 640×720 角色圖。<br>
+點格子也可以選檔案。全部在你的瀏覽器裡處理，不會上傳到任何地方。</p>
+<div class="row">
+  <span>檔名：</span><input type="text" id="name" value="reg_lulu">
+  <span>人物高度：</span><input type="range" id="scale" min="70" max="100" value="92"><span id="sv">92%</span>
+  <button class="go" id="out">輸出 PNG</button>
+</div>
+<div class="grid" id="grid"></div>
+<p>完成後把 PNG 放到 <code>assets/chars/</code>，並在 <code>assets/chars/manifest.json</code> 加一行，例如 <code>{"reg_lulu": "reg_lulu.png"}</code>。</p>
+<script>
+const FRAMES = [
+  ['f_stand', '正面站'], ['f_walk1', '正面走 1'], ['f_walk2', '正面走 2'], ['f_happy', '正面開心'],
+  ['b_stand', '背面站'], ['b_walk1', '背面走 1'], ['b_walk2', '背面走 2'], ['f_carry', '正面端盤'],
+  ['f_sit', '正面坐'], ['b_sit', '背面坐'], ['f_sleep', '坐著睡'], ['b_carry', '背面端盤'],
+];
+const imgs = new Array(12).fill(null);
+const grid = document.getElementById('grid');
+const scaleEl = document.getElementById('scale');
+FRAMES.forEach(([k, nm], i) => {
+  const slot = document.createElement('label');
+  slot.className = 'slot';
+  slot.innerHTML = `<b>${i + 1}. ${nm}</b><canvas width="160" height="240"></canvas><div class="foot"></div><input type="file" accept="image/*">`;
+  const input = slot.querySelector('input');
+  input.onchange = () => input.files[0] && load(i, input.files[0]);
+  slot.ondragover = e => { e.preventDefault(); };
+  slot.ondrop = e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) load(i, f); };
+  grid.appendChild(slot);
+});
+function load(i, file) {
+  const img = new Image();
+  img.onload = () => { imgs[i] = trim(img); draw(i); };
+  img.src = URL.createObjectURL(file);
+}
+// 裁掉透明（或接近白色）的邊
+function trim(img) {
+  const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+  const g = c.getContext('2d'); g.drawImage(img, 0, 0);
+  const d = g.getImageData(0, 0, c.width, c.height).data;
+  let x0 = c.width, y0 = c.height, x1 = 0, y1 = 0;
+  for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) {
+    const p = (y * c.width + x) * 4;
+    const solid = d[p + 3] > 20 && !(d[p] > 245 && d[p + 1] > 245 && d[p + 2] > 245);
+    if (solid) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  }
+  if (x1 <= x0) return c;
+  const t = document.createElement('canvas'); t.width = x1 - x0 + 1; t.height = y1 - y0 + 1;
+  t.getContext('2d').drawImage(c, x0, y0, t.width, t.height, 0, 0, t.width, t.height);
+  return t;
+}
+function place(g, src, sitting) {
+  const H = 232 * scaleEl.value / 100 * (sitting ? 0.82 : 1);
+  const k = Math.min(H / src.height, 150 / src.width);
+  const w = src.width * k, h = src.height * k;
+  g.drawImage(src, 80 - w / 2, 232 - h, w, h);
+}
+function draw(i) {
+  const slot = grid.children[i], cv = slot.querySelector('canvas'), g = cv.getContext('2d');
+  g.clearRect(0, 0, 160, 240);
+  if (imgs[i]) { place(g, imgs[i], FRAMES[i][0].includes('sit') || FRAMES[i][0] === 'f_sleep'); slot.classList.add('has'); }
+}
+scaleEl.oninput = () => { document.getElementById('sv').textContent = scaleEl.value + '%'; imgs.forEach((_, i) => draw(i)); };
+document.getElementById('out').onclick = () => {
+  const c = document.createElement('canvas'); c.width = 640; c.height = 720;
+  const g = c.getContext('2d');
+  imgs.forEach((im, i) => {
+    const src = im || imgs[i < 4 ? 0 : i < 8 ? 4 : 8] || imgs[0];
+    if (!src) return;
+    g.save(); g.translate((i % 4) * 160, Math.floor(i / 4) * 240);
+    place(g, src, FRAMES[i][0].includes('sit') || FRAMES[i][0] === 'f_sleep');
+    g.restore();
+  });
+  const a = document.createElement('a');
+  a.download = (document.getElementById('name').value || 'character') + '.png';
+  a.href = c.toDataURL('image/png'); a.click();
+};
+</script>
+</body>
+</html>

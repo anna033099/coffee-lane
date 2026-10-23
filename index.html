@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <title>咖啡巷物語｜咖啡館經營網頁遊戲</title>
-  <meta name="description" content="在巷口經營一間自己的小咖啡館：烘豆、沖煮、裝潢、擴店、結交常客。免費、瀏覽器即玩。">
+  <title>咖啡巷物語｜咖啡館經營遊戲</title>
+  <meta name="description" content="在巷口經營一間自己的咖啡館：烘豆、手作咖啡、甜點與料理、裝潢擴店、結交常客、拜訪鄰居。免費、瀏覽器即玩。">
   <meta name="theme-color" content="#3b2a22">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -15,12 +15,19 @@
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700;900&family=Pacifico&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
+  <script type="importmap">{ "imports": { "three": "./lib/three.module.min.js" } }</script>
 </head>
 <body>
-  <div id="stage">
-    <svg id="room" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="咖啡館店內"></svg>
+  <canvas id="gl" aria-label="咖啡館店內"></canvas>
+  <div id="overlay"></div>
+  <div id="ui"></div>
+  <div id="boot">
+    <div class="logo">Coffee Lane</div>
+    <div class="zh">咖啡巷物語</div>
+    <div class="bar green"><i style="width:5%"></i></div>
+    <small>正在準備店面…</small>
   </div>
   <div id="rotate">
     <svg viewBox="0 0 64 64" aria-hidden="true"><rect x="20" y="8" width="24" height="44" rx="4" fill="none" stroke="#fffaf0" stroke-width="3"/><path d="M50,30 a18,18 0 0 1 -18,18" fill="none" stroke="#f2c24e" stroke-width="3"/><path d="M28,46 l4,2 -4,3" fill="none" stroke="#f2c24e" stroke-width="3"/></svg>

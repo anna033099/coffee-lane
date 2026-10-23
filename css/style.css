@@ -162,7 +162,8 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .b-run { width: 3rem; height: 3rem; border-radius: 50%; background: rgba(255, 250, 240, .95); border: .14rem solid var(--ink2); box-shadow: var(--shadow); }
 .b-run .ring { position: absolute; inset: -.1rem; width: calc(100% + .2rem); height: calc(100% + .2rem); }
 .b-run .b-ic { position: absolute; inset: .45rem; }
-.b-ic svg { width: 100%; height: 100%; }
+.b-ic { display: flex; align-items: center; justify-content: center; }
+.b-ic svg, .b-ic img { width: 100% !important; height: 100% !important; display: block; object-fit: contain; }
 .b-sell { display: flex; align-items: center; gap: .15rem; padding: .2rem .5rem .2rem .25rem; border-radius: 1.2rem; background: rgba(255, 250, 240, .95); border: .14rem solid var(--ink2); box-shadow: var(--shadow); }
 .b-sell .b-ic { width: 1.9rem; height: 1.9rem; }
 .b-sell b { font-size: .85rem; font-weight: 900; }

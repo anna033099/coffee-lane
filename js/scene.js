@@ -67,6 +67,7 @@ export class World {
       const o = bakedModel('m_' + m.type, MACHINE_MODEL[m.type] || (() => MD.grinder()));
       o.position.set(m.slot + 0.5, 0, 0.5);
       o.traverse(n => { n.userData.pick = { type: 'machine', slot: m.slot }; });
+      this.anchorOf(o, m.slot);
       grp.add(o); this.machineObjs.set(m.slot, o);
     }
     // 空的吧台格：小盆栽或磨豆機，讓吧台不會空蕩蕩
@@ -228,22 +229,31 @@ export class World {
     const C = 2 * Math.PI * 17;
     return `<svg class="ring" viewBox="0 0 40 40"><circle cx="20" cy="20" r="17" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="4"/><circle cx="20" cy="20" r="17" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - p)}" transform="rotate(-90 20 20)"/></svg>`;
   }
+  // 頭上圖示要對準機器本體：用模型的實際外框算中心與頂端
+  anchorOf(o, slot) {
+    if (!this.anchors) this.anchors = new Map();
+    o.updateMatrixWorld(true);
+    const b = new THREE.Box3().setFromObject(o);
+    this.anchors.set(slot, [(b.min.x + b.max.x) / 2, (b.min.z + b.max.z) / 2, Math.min(b.max.y, 1.62)]);
+  }
   machineBubble(m, X, t) {
     const g = this.g;
     const st = g.status(m, t);
     const k = g.mdef(m).kind, j = m.job;
     const kind = j ? (j.kind === 'roast' ? 'roast' : j.kind === 'brew' ? 'drink' : j.kind) : null;
     const pick = { type: 'machine', slot: m.slot };
-    const Y = 0.45, Z = 1.95;
+    const a = this.anchors && this.anchors.get(m.slot);
+    let Y = 0.45, Z = 1.95;
+    if (a) { X = a[0]; Y = a[1]; Z = a[2] + 0.12; }
     if (st.st === 'idle') {
       const ic = k === 'roaster' ? I.bean : k === 'espresso' ? I.cup : k === 'side' ? I.cake : I.meal;
-      this.bubble('m' + m.slot, `<div class="b-idle">${ic}</div>`, 'idle', X, Y, Z - 0.25, pick);
+      this.bubble('m' + m.slot, `<div class="b-idle">${ic}</div>`, 'idle', X, Y, a ? Z : Z - 0.25, pick);
     } else if (st.st === 'run') {
       this.bubble('m' + m.slot, `<div class="b-run">${this.ring(st.p, kind === 'roast' ? '#d9775f' : '#4f8a78')}<div class="b-ic">${itemIcon(kind, j.item, 30)}</div></div>`, 'run', X, Y, Z, pick);
     } else if (st.st === 'sell') {
       this.bubble('m' + m.slot, `<div class="b-sell"><div class="b-ic">${itemIcon('drink', j.item, 30)}</div><b>${j.sellLeft}</b></div>`, 'sell', X, Y, Z, pick);
     } else if (st.st === 'done') {
-      this.bubble('m' + m.slot, `<div class="b-done"><div class="b-ic">${itemIcon(kind, j.item, 36)}</div><i>${I.check}</i></div>`, 'done', X, Y, Z + 0.1, pick);
+      this.bubble('m' + m.slot, `<div class="b-done"><div class="b-ic">${itemIcon(kind, j.item, 36)}</div><i>${I.check}</i></div>`, 'done', X, Y, Z, pick);
     } else if (st.st === 'burnt') {
       this.bubble('m' + m.slot, `<div class="b-burnt">${I.smoke}</div>`, 'burnt', X, Y, Z, pick);
     }
@@ -295,7 +305,7 @@ export class World {
   // 飄字（+金幣等）
   floater(pos, text, kind) {
     let x, y, z;
-    if (pos.slot !== undefined) { x = pos.slot >= 100 ? pos.slot - 100 + 1.5 : pos.slot + 0.5; y = 0.45; z = 2.2; } else { x = pos.x; y = pos.y; z = pos.z || 1.6; }
+    if (pos.slot !== undefined) { const a = this.anchors && this.anchors.get(pos.slot); if (a) { x = a[0]; y = a[1]; z = a[2] + 0.5; } else { x = pos.slot >= 100 ? pos.slot - 100 + 1.5 : pos.slot + 0.5; y = 0.45; z = 2.2; } } else { x = pos.x; y = pos.y; z = pos.z || 1.6; }
     const p = this.e.project(x, y, z);
     const el = document.createElement('div');
     el.className = 'floater ' + kind;
@@ -534,6 +544,7 @@ export class World {
       const slot = 100 + i, m = s.machines.find(q => q.slot === slot);
       const o = m ? bakedModel('m_' + m.type, MACHINE_MODEL[m.type] || (() => MD.grinder())) : bakedModel('shelf' + (i % 3), () => MD.shelfDecor(i % 3));
       o.position.set(i + 1.5, 0, 0.5);
+      if (m) this.anchorOf(o, slot);
       o.traverse(n => { n.userData.pick = m ? { type: 'machine', slot } : { type: 'emptyslot', slot }; });
       grp.add(o);
     }

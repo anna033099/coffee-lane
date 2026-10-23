@@ -65,7 +65,9 @@ export class CharSprite {
       if (this.lookK !== k) return;
       const t = base.clone(); t.source = base.source;
       t.repeat.set(1 / COLS, 1 / ROWS);
-      this.tex = t; this.mat.map = t; this.mat.needsUpdate = true;
+      this.tex = t; this.mat.map = t;
+      // 外部美術（AI 圖）本身已經是完成的顏色，不套場景的色調映射，避免變灰變淡
+      this.mat.toneMapped = !overrideFor(look); this.mat.needsUpdate = true;
       this.mesh.visible = true;
       const f = this.frame; this.frame = -1; this.setFrame(f < 0 ? 'f_stand' : FRAMES[f], this.flip);
     });

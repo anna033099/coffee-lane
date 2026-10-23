@@ -208,7 +208,7 @@ export class World {
   }
 
   // ================== 頭上圖示（DOM） ==================
-  bubble(id, html, cls, x, y, z, pick) {
+  bubble(id, html, cls, x, y, z, pick, scr) {
     let b = this.bubbles.get(id);
     if (!b) {
       b = { el: document.createElement('div'), html: null, cls: null };
@@ -220,7 +220,7 @@ export class World {
     if (b.html !== html) { b.el.innerHTML = html; b.html = html; }
     if (b.cls !== cls) { b.el.className = 'bub ' + cls; b.cls = cls; }
     b.pick = pick;
-    const p = this.e.project(x, y, z);
+    const p = scr || this.e.project(x, y, z);
     const tx = Math.round(p.x), ty = Math.round(p.y);
     if (b.x !== tx || b.y !== ty) { b.el.style.transform = `translate(${tx}px, ${ty}px)`; b.x = tx; b.y = ty; }
     b.alive = true;
@@ -233,8 +233,12 @@ export class World {
   anchorOf(o, slot) {
     if (!this.anchors) this.anchors = new Map();
     o.updateMatrixWorld(true);
-    const b = new THREE.Box3().setFromObject(o);
-    this.anchors.set(slot, [(b.min.x + b.max.x) / 2, (b.min.z + b.max.z) / 2, Math.min(b.max.y, 1.62)]);
+    // 整台機器的外框會被蒸汽管、杯子等小零件撐歪，水平中心改用「體積最大的那一塊」（機身）
+    const all = new THREE.Box3().setFromObject(o);
+    let best = null, bv = -1;
+    o.traverse(n => { if (!n.isMesh) return; const b = new THREE.Box3().setFromObject(n); const sz = b.getSize(new THREE.Vector3()); const v = sz.x * sz.y * sz.z; if (v > bv) { bv = v; best = b; } });
+    const c = (best || all).getCenter(new THREE.Vector3());
+    this.anchors.set(slot, { x: c.x, z: c.z, top: Math.min(all.max.y, 1.62) });
   }
   machineBubble(m, X, t) {
     const g = this.g;
@@ -242,20 +246,21 @@ export class World {
     const k = g.mdef(m).kind, j = m.job;
     const kind = j ? (j.kind === 'roast' ? 'roast' : j.kind === 'brew' ? 'drink' : j.kind) : null;
     const pick = { type: 'machine', slot: m.slot };
-    const a = this.anchors && this.anchors.get(m.slot);
-    let Y = 0.45, Z = 1.95;
-    if (a) { X = a[0]; Y = a[1]; Z = a[2] + 0.12; }
+    const an = this.anchors && this.anchors.get(m.slot);
+    let Y = 0.45, Z = 1.95, a = null;
+    if (an) { const p = this.e.project(an.x, an.z, an.top); a = { x: p.x, y: p.y - 6 }; }
+    const bub = (id, html, cls, x, y, z, pk) => a ? this.bubble(id, html, cls, 0, 0, 0, pk, a) : this.bubble(id, html, cls, x, y, z, pk);
     if (st.st === 'idle') {
       const ic = k === 'roaster' ? I.bean : k === 'espresso' ? I.cup : k === 'side' ? I.cake : I.meal;
-      this.bubble('m' + m.slot, `<div class="b-idle">${ic}</div>`, 'idle', X, Y, a ? Z : Z - 0.25, pick);
+      bub('m' + m.slot, `<div class="b-idle">${ic}</div>`, 'idle', X, Y, Z - 0.25, pick);
     } else if (st.st === 'run') {
-      this.bubble('m' + m.slot, `<div class="b-run">${this.ring(st.p, kind === 'roast' ? '#d9775f' : '#4f8a78')}<div class="b-ic">${itemIcon(kind, j.item, 30)}</div></div>`, 'run', X, Y, Z, pick);
+      bub('m' + m.slot, `<div class="b-run">${this.ring(st.p, kind === 'roast' ? '#d9775f' : '#4f8a78')}<div class="b-ic">${itemIcon(kind, j.item, 30)}</div></div>`, 'run', X, Y, Z, pick);
     } else if (st.st === 'sell') {
-      this.bubble('m' + m.slot, `<div class="b-sell"><div class="b-ic">${itemIcon('drink', j.item, 30)}</div><b>${j.sellLeft}</b></div>`, 'sell', X, Y, Z, pick);
+      bub('m' + m.slot, `<div class="b-sell"><div class="b-ic">${itemIcon('drink', j.item, 30)}</div><b>${j.sellLeft}</b></div>`, 'sell', X, Y, Z, pick);
     } else if (st.st === 'done') {
-      this.bubble('m' + m.slot, `<div class="b-done"><div class="b-ic">${itemIcon(kind, j.item, 36)}</div><i>${I.check}</i></div>`, 'done', X, Y, Z, pick);
+      bub('m' + m.slot, `<div class="b-done"><div class="b-ic">${itemIcon(kind, j.item, 36)}</div><i>${I.check}</i></div>`, 'done', X, Y, Z, pick);
     } else if (st.st === 'burnt') {
-      this.bubble('m' + m.slot, `<div class="b-burnt">${I.smoke}</div>`, 'burnt', X, Y, Z, pick);
+      bub('m' + m.slot, `<div class="b-burnt">${I.smoke}</div>`, 'burnt', X, Y, Z, pick);
     }
   }
   updateBubbles() {
@@ -305,7 +310,7 @@ export class World {
   // 飄字（+金幣等）
   floater(pos, text, kind) {
     let x, y, z;
-    if (pos.slot !== undefined) { const a = this.anchors && this.anchors.get(pos.slot); if (a) { x = a[0]; y = a[1]; z = a[2] + 0.5; } else { x = pos.slot >= 100 ? pos.slot - 100 + 1.5 : pos.slot + 0.5; y = 0.45; z = 2.2; } } else { x = pos.x; y = pos.y; z = pos.z || 1.6; }
+    if (pos.slot !== undefined) { const a = this.anchors && this.anchors.get(pos.slot); if (a) { x = a.x; y = a.z; z = a.top + 0.5; } else { x = pos.slot >= 100 ? pos.slot - 100 + 1.5 : pos.slot + 0.5; y = 0.45; z = 2.2; } } else { x = pos.x; y = pos.y; z = pos.z || 1.6; }
     const p = this.e.project(x, y, z);
     const el = document.createElement('div');
     el.className = 'floater ' + kind;

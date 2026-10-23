@@ -2,6 +2,7 @@
 // 遊戲邏輯（與畫面無關）：經濟、機器、客人動線、員工、事件、常客、鄰居、離線
 // 座標：格子 (x, y)；x 沿後吧台那面牆，y 往門口方向
 // ============================================================
+import * as X from './extra.js';
 import * as D from './data.js';
 import { uid, now, gameDay } from './state.js';
 
@@ -43,6 +44,7 @@ export function randomLook() {
 export class Game {
   constructor(state, hooks = {}) {
     this.s = state;
+    X.ensureExtra(state);
     this.h = Object.assign({ toast() {}, floater() {}, sfx() {}, levelUp() {}, event() {}, changed() {} }, hooks);
     this.customers = [];
     this.passers = [];
@@ -183,7 +185,7 @@ export class Game {
   }
   exhaustedCount() { return this.s.staff.filter(st => st.energy <= 0).length; }
   staffMult() { return Math.max(0.25, 1 - D.TIRED_PENALTY * this.exhaustedCount()); }
-  rate() { return D.customerRate(this.score()) * this.staffMult(); }
+  rate() { return D.customerRate(this.score()) * this.staffMult() * X.rateMult(this); }
   cap() { return D.customerCap(this.score()); }
   maxEnergy(st) { return D.ENERGY_BASE + (st.prof || 0); }
   unlocked(lv) { return this.s.level >= lv; }
@@ -235,12 +237,17 @@ export class Game {
     if (t >= burnAt) return { st: 'burnt' };
     return { st: 'done', burnLeft: burnAt - t };
   }
-  machineCount(kind) { return this.s.machines.filter(m => this.mdef(m).kind === kind).length; }
-  freeSlot() { for (let i = 1; i <= this.slots; i++) if (!this.machineAt(i)) return i; return 0; }
+  machineCount(kind) { return this.s.machines.filter(m => m.slot < X.FLOOR2_SLOT0 && this.mdef(m).kind === kind).length; }
+  freeSlot(up = false) {
+    if (up) { for (let i = 0; i < X.FLOOR2_SLOTS; i++) if (!this.machineAt(X.FLOOR2_SLOT0 + i)) return X.FLOOR2_SLOT0 + i; return 0; }
+    for (let i = 1; i <= this.slots; i++) if (!this.machineAt(i)) return i; return 0;
+  }
   buyMachine(type, slot) {
     const d = D.BAR_MACHINES[type];
     if (!this.unlocked(d.lv)) return this.fail(`Lv${d.lv} 解鎖`);
-    if (this.machineCount(d.kind) >= D.machineCap(d.kind, this.s.level)) return this.fail('這類機器已達目前等級的上限');
+    const up = slot >= X.FLOOR2_SLOT0;
+    if (up && (!this.s.floor2.open || d.kind !== 'side')) return this.fail('2 樓只能擺甜點機器');
+    if (!up && this.machineCount(d.kind) >= D.machineCap(d.kind, this.s.level)) return this.fail('這類機器已達目前等級的上限');
     slot = slot || this.freeSlot();
     if (!slot || this.machineAt(slot)) return this.fail('吧台沒有空位了，擴店可以增加位置');
     if (!this.spend(d.cost)) return false;
@@ -347,6 +354,7 @@ export class Game {
       const n = Math.min(room, j.pcs);
       this.s.showcase[j.item] = (this.s.showcase[j.item] || 0) + n;
       this.s.stats.sideCollect++;
+      this.s.cooked[j.item] = (this.s.cooked[j.item] || 0) + n;
       this.addExp(r.exp * 2);
       if (!quiet) this.h.floater(pos, `+${n}`, 'cake');
     } else if (j.kind === 'meal') {
@@ -358,6 +366,7 @@ export class Game {
       const cur = this.s.meals[k] || { item: j.item, n: 0, mult: j.mult, tops: j.tops };
       cur.n += n; this.s.meals[k] = cur;
       this.s.stats.mealCollect++;
+      this.s.cooked[j.item] = (this.s.cooked[j.item] || 0) + n;
       this.addExp(r.exp * 2);
       if (!quiet) this.h.floater(pos, `+${n}`, 'meal');
     } else return false;
@@ -380,7 +389,7 @@ export class Game {
   // ======================= 販售 =======================
   sellingMachines(t = now()) { return this.s.machines.filter(m => m.job && m.job.kind === 'brew' && this.status(m, t).st === 'sell' && m.job.sellLeft > 0); }
   selling(t) { return this.sellingMachines(t).length > 0; }
-  price(id) { const r = D.RECIPES[id]; return Math.round(r.price * (1 + this.s.recipes[id].stars * D.STAR_BONUS)); }
+  price(id) { const r = D.RECIPES[id]; return Math.round(r.price * (1 + this.s.recipes[id].stars * D.STAR_BONUS) * X.priceMult(this)); }
   // 一位客人買一次（回傳明細）
   purchase(t = now()) {
     const ms = this.sellingMachines(t);
@@ -396,13 +405,13 @@ export class Game {
     if (this.showcaseCount() > 0 && Math.random() < D.SIDE_CHANCE) {
       const keys = Object.keys(this.s.showcase).filter(k => this.s.showcase[k] > 0);
       side = pick(keys); this.s.showcase[side]--; if (!this.s.showcase[side]) delete this.s.showcase[side];
-      gold += D.SIDES[side].price; exp += D.SIDES[side].exp; this.s.stats.sideSold++;
+      gold += Math.round(D.SIDES[side].price * X.priceMult(this)); exp += D.SIDES[side].exp; this.s.stats.sideSold++;
     }
     if (this.mealCount() > 0 && Math.random() < D.MEAL_CHANCE) {
       const keys = Object.keys(this.s.meals).filter(k => this.s.meals[k].n > 0);
       const k = pick(keys); const b = this.s.meals[k];
       b.n--; if (!b.n) delete this.s.meals[k];
-      meal = b.item; gold += Math.round(D.MEALS[b.item].price * b.mult); exp += D.MEALS[b.item].exp; this.s.stats.mealSold++;
+      meal = b.item; gold += Math.round(D.MEALS[b.item].price * b.mult * X.priceMult(this)); exp += D.MEALS[b.item].exp; this.s.stats.mealSold++;
     }
     this.s.stats.sold++;
     return { drink: id, side, meal, gold, exp };
@@ -1076,10 +1085,12 @@ export class Game {
   offline(auto, tNow = now()) {
     const s = this.s;
     let t = s.lastTick || tNow;
-    const total = Math.min(D.OFFLINE_MAX, tNow - t);
+    const full = !!(s.autoOwned && s.autoOwned.offline);
+    if (!full) auto = null; // 還沒解鎖「離線營業」：只結算 1 小時、自動功能不跑
+    const total = Math.min(full ? D.OFFLINE_MAX : 3600, tNow - t);
     if (total < 30) { s.lastTick = tNow; return null; }
     t = tNow - total;
-    const sum = { secs: total, gold: 0, sold: 0, sides: 0, meals: 0, beans: 0, burnt: 0 };
+    const sum = { full, secs: total, gold: 0, sold: 0, sides: 0, meals: 0, beans: 0, burnt: 0 };
     const g0 = s.gold, b0 = s.beans, sold0 = s.stats.sold, side0 = s.stats.sideSold, meal0 = s.stats.mealSold, burnt0 = s.stats.burnt;
     let acc = 0;
     const step = 60;

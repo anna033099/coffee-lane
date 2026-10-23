@@ -116,7 +116,6 @@ function tableMarbleRound() {
   g.add(cyl(0.03, 0.03, 0.82, M.brass, 0, 0.42, 0, 16));
   g.add(cyl(0.08, 0.05, 0.05, M.brass, 0, 0.83, 0));
   g.add(cyl(0.36, 0.36, 0.045, M.marble, 0, 0.88, 0, 40));
-  g.add(cup('cup', 1).translateX(0.1).translateY(0.9));
   return g;
 }
 function tableWalnutSquare() {
@@ -139,7 +138,6 @@ function tableBistro() {
   g.add(cyl(0.025, 0.025, 0.3, M.iron, 0, 0.72, 0, 12));
   g.add(cyl(0.32, 0.32, 0.04, M.marbleBlack, 0, 0.88, 0, 40));
   g.add(cyl(0.325, 0.325, 0.012, M.brass, 0, 0.86, 0, 40));
-  g.add(cup('glass', 1.1).translateX(-0.08).translateY(0.9).translateZ(0.06));
   return g;
 }
 function tableTerrazzo() {
@@ -884,5 +882,174 @@ Object.assign(BUILDERS, {
   tbl_pink: () => { const g = tableMarbleRound(); g.children.forEach(c => { if (c.material === M.marble) c.material = M.marblePink; }); return g; },
   ch_navy: () => chairVelvet(M.velvetNavy), ch_royal: royalChair, fountain,
   pendant_globe: () => pendant(2.6, 3.6, 0), pendant_brass: () => pendant(2.6, 3.6, 1),
-  w_truck_art: () => framedArt(1), sign_truck: () => aFrameSign(),
+  w_truck_art: () => framedArt(1), sign_truck: () => aFrameSign(), sign_heart: () => aFrameSign(),
 });
+
+// ================= 擴充機器 =================
+function counterBase(m = M.steel, h = 0.12) { return rbox(0.8, h, 0.48, 0.02, m, 0, 1.0 + h / 2, -0.15); }
+export function gelatoCase() {
+  const g = new THREE.Group();
+  g.add(rbox(0.82, 0.16, 0.48, 0.03, M.white, 0, 1.08, -0.15));
+  const lid = rbox(0.78, 0.02, 0.44, 0.01, M.glass, 0, 1.24, -0.15); lid.rotation.x = -0.18; g.add(lid);
+  const cols = ['#f8edc8', '#b9cf8a', '#e8a0b0', '#5a3324', '#f4b23a', '#fbf8ef'];
+  for (let i = 0; i < 6; i++) {
+    const x = -0.27 + (i % 3) * 0.27, z = -0.25 + Math.floor(i / 3) * 0.2;
+    g.add(rbox(0.22, 0.04, 0.16, 0.01, M.steel, x, 1.17, z));
+    g.add(sph(0.08, colorMat(cols[i], 0.7), x, 1.18, z, 1.2, 0.45, 0.9, 14));
+  }
+  g.add(rbox(0.82, 0.03, 0.48, 0.01, M.brass, 0, 1.0, -0.15));
+  return g;
+}
+export function crepeGriddle() {
+  const g = new THREE.Group();
+  g.add(counterBase(M.chrome, 0.1));
+  for (const x of [-0.18, 0.18]) { g.add(cyl(0.17, 0.17, 0.03, M.iron, x, 1.12, -0.15, 32)); g.add(cyl(0.15, 0.15, 0.005, colorMat('#e9c27a', 0.6), x, 1.14, -0.15, 32)); }
+  const tool = rbox(0.02, 0.01, 0.22, 0.004, M.walnut, 0.3, 1.16, 0.12); tool.rotation.y = 0.4; g.add(tool);
+  return g;
+}
+export function patisserieOven() {
+  const g = new THREE.Group();
+  g.add(rbox(0.74, 0.5, 0.44, 0.03, colorMat('#2f5446', 0.4), 0, 1.25, -0.16));
+  for (let i = 0; i < 2; i++) {
+    g.add(rbox(0.62, 0.18, 0.02, 0.02, M.blackGloss, 0, 1.13 + i * 0.24, 0.065));
+    g.add(rbox(0.5, 0.1, 0.01, 0.01, std({ color: '#ffb35a', emissive: '#ff9a3a', emissiveIntensity: 0.8 }), 0, 1.13 + i * 0.24, 0.072));
+    g.add(cyl(0.008, 0.008, 0.5, M.brass, 0, 1.23 + i * 0.24, 0.085, 8).rotateZ(Math.PI / 2));
+  }
+  g.add(rbox(0.76, 0.03, 0.46, 0.01, M.brass, 0, 1.51, -0.16));
+  return g;
+}
+export function wagashiCounter() {
+  const g = new THREE.Group();
+  g.add(rbox(0.82, 0.06, 0.48, 0.01, M.ash, 0, 1.03, -0.15));
+  for (let i = 0; i < 2; i++) { const st = cyl(0.13, 0.13, 0.08, M.cane, -0.2, 1.1 + i * 0.08, -0.18, 24); g.add(st); }
+  g.add(cyl(0.135, 0.135, 0.02, M.ash, -0.2, 1.27, -0.18, 24));
+  const tray = rbox(0.34, 0.025, 0.22, 0.01, M.ceramicBlack, 0.18, 1.07, -0.1); g.add(tray);
+  const cols = ['#f2b8c6', '#ffffff', '#8fae5a'];
+  for (let i = 0; i < 3; i++) g.add(sph(0.045, colorMat(cols[i], 0.7), 0.08 + i * 0.1, 1.11, -0.1, 1, 0.75, 1, 14));
+  return g;
+}
+export function riceStation() {
+  const g = new THREE.Group();
+  g.add(counterBase(M.walnut, 0.06));
+  const cooker = lathe([[0, 0], [0.15, 0], [0.16, 0.16], [0.13, 0.2], [0, 0.21]], M.white); cooker.position.set(-0.2, 1.06, -0.18); g.add(cooker);
+  g.add(cyl(0.03, 0.03, 0.02, M.iron, -0.2, 1.28, -0.18, 12));
+  for (let i = 0; i < 3; i++) {
+    const b = lathe([[0, 0], [0.04, 0], [0.075, 0.06], [0.072, 0.065], [0, 0.03]], M.ceramicBlack); b.position.set(0.06 + i * 0.13, 1.06, -0.05 - (i % 2) * 0.12); g.add(b);
+    g.add(sph(0.06, colorMat('#fbf8f0', 0.8), 0.06 + i * 0.13, 1.115, -0.05 - (i % 2) * 0.12, 1, 0.45, 1, 14));
+  }
+  return g;
+}
+export function saladBar() {
+  const g = new THREE.Group();
+  g.add(counterBase(M.chrome, 0.08));
+  const cols = ['#6d9558', '#d9402e', '#f2d36b', '#8fbf5a', '#f4efe6', '#7a4a3a'];
+  for (let i = 0; i < 6; i++) {
+    const x = -0.27 + (i % 3) * 0.27, z = -0.25 + Math.floor(i / 3) * 0.2;
+    g.add(rbox(0.22, 0.05, 0.16, 0.01, M.steel, x, 1.11, z));
+    for (let k = 0; k < 4; k++) g.add(sph(0.03, colorMat(cols[i], 0.6), x - 0.05 + (k % 2) * 0.1, 1.14, z - 0.03 + (k >> 1) * 0.06, 1, 0.6, 1, 10));
+  }
+  const hood = rbox(0.82, 0.02, 0.4, 0.01, M.glass, 0, 1.36, -0.15); g.add(hood);
+  for (const x of [-0.39, 0.39]) g.add(cyl(0.008, 0.008, 0.22, M.chrome, x, 1.25, -0.15, 8));
+  return g;
+}
+export function wokStation() {
+  const g = new THREE.Group();
+  g.add(counterBase(M.steel, 0.14));
+  const ring = torus(0.12, 0.02, Math.PI * 2, M.iron, 18); ring.rotation.x = Math.PI / 2; ring.position.set(-0.1, 1.15, -0.15); g.add(ring);
+  g.add(cyl(0.1, 0.1, 0.01, std({ color: '#ff9a3a', emissive: '#ff6a1a', emissiveIntensity: 1.2 }), -0.1, 1.145, -0.15, 18));
+  const wok = new THREE.Mesh(new THREE.SphereGeometry(0.2, 24, 10, 0, Math.PI * 2, Math.PI * 0.62, Math.PI * 0.38), M.iron);
+  wok.position.set(-0.1, 1.33, -0.15); g.add(wok);
+  g.add(sph(0.12, colorMat('#efcf6a', 0.7), -0.1, 1.19, -0.15, 1, 0.3, 1, 16));
+  const h = cyl(0.015, 0.015, 0.26, M.walnut, 0.16, 1.22, -0.15, 8); h.rotation.z = Math.PI / 2; g.add(h);
+  g.add(cyl(0.05, 0.05, 0.12, M.ceramic, 0.3, 1.2, -0.28, 14));
+  return g;
+}
+export function fryerStation() {
+  const g = new THREE.Group();
+  g.add(rbox(0.7, 0.24, 0.44, 0.02, M.steel, 0, 1.12, -0.16));
+  for (const x of [-0.16, 0.16]) {
+    g.add(rbox(0.26, 0.02, 0.3, 0.01, colorMat('#c9902e', 0.25), x, 1.24, -0.16));
+    const basket = rbox(0.2, 0.1, 0.18, 0.01, M.chrome, x, 1.3, -0.12); g.add(basket);
+    g.add(cyl(0.01, 0.01, 0.2, M.blackGloss, x, 1.36, 0.02, 8).rotateX(Math.PI / 2.6));
+  }
+  for (let i = 0; i < 8; i++) g.add(rbox(0.018, 0.018, 0.1, 0.005, colorMat('#f2c24e', 0.6), -0.2 + i * 0.012, 1.36, -0.12).rotateY(i));
+  return g;
+}
+export function soupStation() {
+  const g = new THREE.Group();
+  g.add(counterBase(M.iron, 0.1));
+  const pot = lathe([[0, 0], [0.16, 0], [0.17, 0.24], [0.18, 0.25], [0.16, 0.25], [0, 0.02]], M.copper); pot.position.set(-0.12, 1.1, -0.17); g.add(pot);
+  g.add(cyl(0.155, 0.155, 0.01, colorMat('#f0a43a', 0.4), -0.12, 1.32, -0.17, 24));
+  const ladle = tube([[-0.12, 1.32, -0.17], [-0.05, 1.45, -0.12], [0.0, 1.5, -0.1]], 0.01, M.steel, 12); g.add(ladle);
+  for (let i = 0; i < 2; i++) { const b = lathe([[0, 0], [0.05, 0], [0.08, 0.06], [0, 0.03]], M.ceramic); b.position.set(0.2, 1.1 + i * 0.04, -0.05); g.add(b); }
+  return g;
+}
+export function charcoalGrill() {
+  const g = new THREE.Group();
+  g.add(rbox(0.78, 0.18, 0.46, 0.02, M.blackGloss, 0, 1.09, -0.16));
+  g.add(rbox(0.7, 0.02, 0.38, 0.005, std({ color: '#ff7a2a', emissive: '#ff4a1a', emissiveIntensity: 0.9, roughness: 1 }), 0, 1.17, -0.16));
+  for (let i = 0; i < 9; i++) g.add(cyl(0.006, 0.006, 0.38, M.steel, -0.32 + i * 0.08, 1.2, -0.16, 6).rotateX(Math.PI / 2));
+  g.add(rbox(0.2, 0.04, 0.12, 0.02, colorMat('#7a3a26', 0.6), -0.14, 1.23, -0.18));
+  for (let i = 0; i < 3; i++) { const sk = cyl(0.004, 0.004, 0.3, M.ash, 0.18, 1.225, -0.28 + i * 0.1, 6); sk.rotation.z = Math.PI / 2; g.add(sk); for (let k = 0; k < 4; k++) g.add(sph(0.022, colorMat('#a8562e', 0.6), 0.08 + k * 0.06, 1.225, -0.28 + i * 0.1, 1, 1, 1, 8)); }
+  return g;
+}
+export function seafoodStation() {
+  const g = new THREE.Group();
+  g.add(counterBase(M.chrome, 0.08));
+  g.add(rbox(0.74, 0.04, 0.42, 0.02, colorMat('#e6f3f6', 0.2), 0, 1.11, -0.15));
+  for (let i = 0; i < 18; i++) g.add(sph(0.025, colorMat('#f4fbfc', 0.1), -0.32 + (i % 6) * 0.13, 1.135, -0.3 + Math.floor(i / 6) * 0.13, 1, 0.7, 1, 8));
+  // 生蠔
+  for (let i = 0; i < 3; i++) { g.add(sph(0.05, colorMat('#8a8478', 0.8), -0.24 + i * 0.12, 1.15, -0.06, 1.2, 0.35, 0.9, 12)); g.add(sph(0.03, colorMat('#e9e2cf', 0.3), -0.24 + i * 0.12, 1.165, -0.06, 1.2, 0.3, 0.9, 10)); }
+  // 龍蝦
+  g.add(sph(0.06, colorMat('#d9402e', 0.4), 0.2, 1.16, -0.2, 2.2, 0.7, 1, 14));
+  for (const s2 of [-1, 1]) g.add(sph(0.03, colorMat('#d9402e', 0.4), 0.06, 1.16, -0.2 + s2 * 0.07, 1.4, 0.8, 1, 10));
+  return g;
+}
+export function koreanStation() {
+  const g = new THREE.Group();
+  g.add(counterBase(M.walnutDark, 0.08));
+  for (const [x, z] of [[-0.2, -0.18], [0.12, -0.24]]) {
+    const pot = lathe([[0, 0], [0.11, 0], [0.13, 0.09], [0.12, 0.1], [0, 0.03]], M.ceramicBlack); pot.position.set(x, 1.08, z); g.add(pot);
+    g.add(cyl(0.11, 0.11, 0.01, colorMat('#d9402e', 0.5), x, 1.17, z, 20));
+    g.add(sph(0.025, colorMat('#f2c23a', 0.4), x, 1.18, z));
+  }
+  for (let i = 0; i < 3; i++) { const b = cyl(0.045, 0.04, 0.03, M.steel, 0.24, 1.1, -0.04 - i * 0.1, 14); g.add(b); g.add(cyl(0.04, 0.04, 0.005, colorMat(['#d9402e', '#6d9558', '#f2d36b'][i], 0.6), 0.24, 1.116, -0.04 - i * 0.1, 14)); }
+  return g;
+}
+export function sushiCounter() {
+  const g = new THREE.Group();
+  g.add(rbox(0.84, 0.07, 0.48, 0.01, M.ash, 0, 1.035, -0.15));
+  const board = rbox(0.5, 0.05, 0.2, 0.01, M.oak, -0.08, 1.095, -0.08); g.add(board);
+  for (let i = 0; i < 5; i++) {
+    g.add(rbox(0.07, 0.035, 0.045, 0.015, colorMat('#fbf8f0', 0.9), -0.28 + i * 0.1, 1.135, -0.08));
+    g.add(rbox(0.08, 0.012, 0.05, 0.006, colorMat(i % 2 ? '#f08a6a' : '#d9402e', 0.3), -0.28 + i * 0.1, 1.158, -0.08));
+  }
+  const glass = rbox(0.8, 0.18, 0.02, 0.01, M.glass, 0, 1.17, -0.33); g.add(glass);
+  return g;
+}
+
+export const MACHINE_BUILDERS = {
+  roaster_classic: () => roaster(0), roaster_forest: () => roaster(1), roaster_navy: () => roaster(2),
+  espresso_steel: () => espressoMachine(0), espresso_cream: () => espressoMachine(1), espresso_green: () => espressoMachine(2),
+  toaster: () => toaster(), oven: () => oven(0), fridge: () => dessertFridge(), waffle: () => waffleIron(), bench: () => pastryBench(),
+  griddle: () => griddle(), stove: () => pastaStove(), press: () => paniniPress(), pizza: () => pizzaOven(),
+  gelato: gelatoCase, crepe: crepeGriddle, patisserie: patisserieOven, wagashi: wagashiCounter,
+  rice: riceStation, salad: saladBar, wok: wokStation, fryer: fryerStation, soup: soupStation,
+  grill: charcoalGrill, seafood: seafoodStation, korean: koreanStation, sushi: sushiCounter,
+};
+
+// 2 樓的樓梯口（往下）
+export function staircase() {
+  const g = new THREE.Group();
+  for (let i = 0; i < 5; i++) {
+    const st = rbox(0.9, 0.04, 0.2, 0.01, M.walnut, 0, -i * 0.16 + 0.02, -0.4 + i * 0.2);
+    g.add(st);
+  }
+  g.add(rbox(0.92, 0.02, 1.0, 0.005, colorMat('#2a1a12', 0.9), 0, -0.85, 0));
+  for (const x of [-0.46, 0.46]) {
+    g.add(rbox(0.04, 0.9, 0.04, 0.01, M.brass, x, 0.45, -0.46));
+    g.add(tube([[x, 0.9, -0.46], [x, 0.9, 0.0], [x, 0.4, 0.5]], 0.02, M.brass, 16));
+    for (let k = 0; k < 4; k++) g.add(cyl(0.008, 0.008, 0.85, M.iron, x, 0.45 - k * 0.12, -0.3 + k * 0.2, 6));
+  }
+  return g;
+}

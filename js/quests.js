@@ -1,4 +1,5 @@
 // 劇情任務（NPC 發任務）與每日任務
+import { addSP } from './extra.js';
 import * as D from './data.js';
 import { gameDay } from './state.js';
 
@@ -35,7 +36,7 @@ export const CHAIN = [
   { npc: 'mike', title: '開放廚房', say: ['只有咖啡和點心還不夠，我們來做早午餐吧！', '買一台早午餐鐵板，做鬆餅還能加料，加越多賣越貴。'], goal: '擁有一台廚房設備', target: 1, val: g => g.s.machines.filter(m => g.mdef(m).kind === 'kitchen').length, reward: { gold: 1500 }, lv: 7 },
   { npc: 'mike', title: '第一道料理', say: ['料理做好要記得收，會放到出餐檯讓客人點。'], goal: '收成料理', target: 1, val: st('mealCollect'), reward: { gold: 800 } },
   { npc: 'chen', title: '更有質感的店', say: ['想讓更多人上門，店要更漂亮才行。'], goal: '裝潢分數達到 100', target: 100, val: g => g.score(), reward: { coupon: 3 } },
-  { npc: 'yun', title: '自動經營', say: ['店長，聽說有「自動經營」可以用！', '打開右邊的齒輪箭頭圖示，可以設定自動烘豆、自動沖煮、自動打氣……就算不在店裡也會繼續營業。'], goal: '打開任一項自動功能', target: 1, val: has(g => g.s.auto.master && ['roast', 'brew', 'side', 'meal', 'cheer', 'events', 'neighbors'].some(k => g.s.auto[k])), reward: { gold: 1000 } },
+  { npc: 'yun', title: '自動經營小幫手', say: ['店長，忙不過來的話可以聘請「自動小幫手」！', '打開右邊的「自動經營」，先從「自動店內事件」開始，等級越高能聘的小幫手越多。'], goal: '聘請一位自動小幫手', target: 1, val: has(g => Object.keys(g.s.autoOwned || {}).length > 0), reward: { gold: 1000 } },
   { npc: 'yun', title: '回收台好忙', say: ['回收台的杯子越堆越多，請一位回收員吧！'], goal: '雇用回收員', target: 1, val: has(g => !!g.staffByJob('recycle')), reward: { gold: 2000 }, lv: 10 },
   { npc: 'mike', title: '人氣咖啡館', say: ['已經賣出這麼多杯了，外婆一定很開心。'], goal: '累積賣出 1000 杯', target: 1000, val: st('sold'), reward: { coupon: 5 } },
   { npc: 'chen', title: '再擴建一次', say: ['隔壁空出來了，要不要把店再擴大？'], goal: '擴店兩次', target: 2, val: g => g.s.expand, reward: { coupon: 5 }, lv: 10 },
@@ -91,7 +92,7 @@ export function dailyProgress(g, it) { return Math.min(it.target, (g.s.stats[it.
 export function claimDaily(g, i) {
   const d = ensureDaily(g), it = d.list[i];
   if (!it || it.claimed || dailyProgress(g, it) < it.target) return null;
-  it.claimed = true; g.give(it.reward);
+  it.claimed = true; g.give(it.reward); addSP(g, 4);
   return it.reward;
 }
 export function claimDailyBonus(g) {

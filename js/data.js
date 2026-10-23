@@ -45,7 +45,12 @@ export const TOOLS = {
   pourover: { name: '手沖器具組', lv: 12, cost: 9000, desc: '精品單品手沖' },
   blender: { name: '冰沙果汁機', lv: 16, cost: 15000, desc: '星冰樂系列' },
   coldbrew: { name: '冰滴咖啡塔', lv: 20, cost: 24000, desc: '慢慢滴出的冰滴咖啡' },
-  tea: { name: '日式茶具組', lv: 24, cost: 32000, desc: '抹茶系列飲品' },
+  tea: { name: '日式茶具組', lv: 24, cost: 32000, desc: '抹茶、焙茶系列飲品' },
+  teapot: { name: '英式紅茶壺組', lv: 5, cost: 1500, desc: '紅茶、奶茶與伯爵茶' },
+  fruit: { name: '鮮果吧台', lv: 11, cost: 6000, desc: '檸檬、草莓、芒果、柳橙等鮮果飲' },
+  soda: { name: '氣泡水機', lv: 15, cost: 12000, desc: '清爽的氣泡咖啡與氣泡飲' },
+  flavor: { name: '風味糖漿櫃', lv: 19, cost: 20000, desc: '榛果、玫瑰、黑糖、海鹽等風味' },
+  plant: { name: '植物奶冰箱', lv: 23, cost: 28000, desc: '燕麥奶、椰奶系列' },
 };
 
 // ---------------- 手作材料（小遊戲按鈕） ----------------
@@ -65,13 +70,34 @@ export const INGS = {
   pour: { name: '手沖注水', color: '#6b3a22', kind: 'liquid', icon: 'pour' },
   dutch: { name: '冰滴液', color: '#2a160e', kind: 'liquid', icon: 'dutch' },
   blend: { name: '攪打', color: '#d8c3a5', kind: 'action', icon: 'blend' },
+  honey: { name: '蜂蜜', color: '#e8a63a', kind: 'sauce', icon: 'honey' },
+  blacktea: { name: '紅茶', color: '#9a4a22', kind: 'liquid', icon: 'blacktea' },
+  hojicha: { name: '焙茶', color: '#8a5a3a', kind: 'liquid', icon: 'hojicha' },
+  lemon: { name: '檸檬', color: '#f2d64a', kind: 'fruit', icon: 'lemon' },
+  strawberry: { name: '草莓', color: '#e0526a', kind: 'liquid', icon: 'strawberry' },
+  mango: { name: '芒果', color: '#f4b23a', kind: 'liquid', icon: 'mango' },
+  orange: { name: '柳橙汁', color: '#f39a2e', kind: 'liquid', icon: 'orange' },
+  mint: { name: '薄荷', color: '#5aa86a', kind: 'fruit', icon: 'mint' },
+  soda: { name: '氣泡水', color: '#e9f5f7', kind: 'liquid', icon: 'soda' },
+  hazelnut: { name: '榛果糖漿', color: '#b07a4a', kind: 'liquid', icon: 'hazelnut' },
+  rose: { name: '玫瑰糖漿', color: '#e79ab0', kind: 'liquid', icon: 'rose' },
+  brownsugar: { name: '黑糖', color: '#5a2e1a', kind: 'sauce', icon: 'brownsugar' },
+  seasalt: { name: '海鹽奶蓋', color: '#f6f4ee', kind: 'top', icon: 'seasalt' },
+  oat: { name: '燕麥奶', color: '#efe2c6', kind: 'liquid', icon: 'oat' },
+  coconut: { name: '椰奶', color: '#fbf8ef', kind: 'liquid', icon: 'coconut' },
 };
 export const TOOL_INGS = {
-  espresso: ['shot', 'water'], frother: ['milk', 'foam', 'choco', 'cream', 'cinnamon'], syrup: ['vanilla', 'caramel'],
-  ice: ['ice', 'coldmilk'], pourover: ['pour'], blender: ['blend'], coldbrew: ['dutch'], tea: ['matcha'],
+  espresso: ['shot', 'water'], frother: ['milk', 'foam', 'choco', 'cream', 'cinnamon'], syrup: ['vanilla', 'caramel', 'honey'],
+  ice: ['ice', 'coldmilk'], pourover: ['pour'], blender: ['blend'], coldbrew: ['dutch'], tea: ['matcha', 'hojicha'],
+  teapot: ['blacktea'], fruit: ['lemon', 'strawberry', 'mango', 'orange', 'mint'], soda: ['soda'],
+  flavor: ['hazelnut', 'rose', 'brownsugar', 'seasalt'], plant: ['oat', 'coconut'],
 };
 
 // ---------------- 咖啡配方 ----------------
+function dr(id, name, en, lv, tool, steps, cup, tags, gar) {
+  const big = cup === 'tall' || cup === 'frappe' || cup === 'goblet';
+  return { [id]: { name, en, lv, tool, steps, cup, tags, gar, cups: big ? 40 : 30, beans: Math.round(20 + lv * 6), prep: Math.round(Math.min(9000, 30 * Math.pow(1.13, lv))), price: Math.round(10 + lv * 2.8 + steps.length), exp: 1 + Math.floor(lv / 5) } };
+}
 // steps：手作順序；cups：一次做幾杯；beans：一批耗豆；prep：準備秒數；price：每杯售價；exp：每杯經驗
 export const RECIPES = {
   espresso: { name: '濃縮咖啡', en: 'Espresso', lv: 1, tool: 'espresso', steps: [['shot', 1]], cups: 24, beans: 24, prep: 10, price: 10, exp: 1, cup: 'demi', tags: ['strong', 'hot', 'black'] },
@@ -97,6 +123,42 @@ export const RECIPES = {
   matcha_latte: { name: '抹茶拿鐵', en: 'Matcha Latte', lv: 24, tool: 'tea', steps: [['matcha', 1], ['water', 1], ['milk', 3]], cups: 30, beans: 120, prep: 600, price: 60, exp: 6, cup: 'glass', tags: ['milk', 'hot', 'mild', 'sweet'] },
   matcha_espresso: { name: '抹茶咖啡', en: 'Matcha Espresso', lv: 26, tool: 'tea', steps: [['ice', 1], ['matcha', 1], ['coldmilk', 2], ['shot', 1]], cups: 30, beans: 180, prep: 900, price: 78, exp: 7, cup: 'tall', tags: ['milk', 'iced', 'strong'] },
   house_special: { name: '店長招牌', en: 'House Special', lv: 30, tool: 'syrup', steps: [['vanilla', 1], ['shot', 2], ['milk', 2], ['foam', 1], ['cinnamon', 1]], cups: 30, beans: 220, prep: 1200, price: 95, exp: 8, cup: 'cup', tags: ['sweet', 'hot', 'milk', 'classic'] },
+  // ---- 擴充飲品（數值依等級自動計算） ----
+  ...dr('cortado', '可塔朵', 'Cortado', 3, 'frother', [['shot', 1], ['milk', 1]], 'rocks', ['strong', 'hot', 'milk']),
+  ...dr('con_panna', '康寶藍', 'Espresso con Panna', 4, 'frother', [['shot', 2], ['cream', 1]], 'demi', ['strong', 'hot', 'sweet']),
+  ...dr('black_tea', '錫蘭紅茶', 'Ceylon Black Tea', 5, 'teapot', [['blacktea', 1], ['water', 2]], 'teacup', ['hot', 'mild', 'cheap'], 'lemon'),
+  ...dr('royal_milktea', '皇家奶茶', 'Royal Milk Tea', 6, 'teapot', [['blacktea', 2], ['milk', 2]], 'teacup', ['hot', 'milk', 'sweet']),
+  ...dr('hot_choco', '熱可可', 'Hot Chocolate', 6, 'frother', [['choco', 2], ['milk', 3], ['cream', 1]], 'mug', ['sweet', 'hot', 'milk'], 'cocoa'),
+  ...dr('honey_latte', '蜂蜜拿鐵', 'Honey Latte', 7, 'syrup', [['honey', 1], ['shot', 1], ['milk', 3]], 'glass', ['sweet', 'hot', 'milk', 'mild']),
+  ...dr('earl_latte', '伯爵茶拿鐵', 'Earl Grey Latte', 8, 'teapot', [['blacktea', 1], ['vanilla', 1], ['milk', 2], ['foam', 1]], 'glass', ['hot', 'milk', 'mild']),
+  ...dr('iced_lemon_tea', '冰檸檬紅茶', 'Iced Lemon Tea', 11, 'fruit', [['ice', 2], ['blacktea', 1], ['water', 1], ['lemon', 1]], 'tall', ['iced', 'cheap', 'mild'], 'lemon'),
+  ...dr('lemon_americano', '檸檬冰美式', 'Lemon Americano', 12, 'fruit', [['ice', 2], ['shot', 1], ['water', 2], ['lemon', 1]], 'tall', ['iced', 'black', 'strong'], 'lemon'),
+  ...dr('orange_americano', '柳橙冰美式', 'Orange Americano', 13, 'fruit', [['ice', 2], ['orange', 2], ['shot', 1]], 'tall', ['iced', 'strong', 'sweet'], 'orange'),
+  ...dr('strawberry_latte', '草莓牛奶拿鐵', 'Strawberry Latte', 13, 'fruit', [['strawberry', 1], ['ice', 1], ['coldmilk', 2], ['shot', 1]], 'tall', ['sweet', 'iced', 'milk'], 'strawberry'),
+  ...dr('espresso_tonic', '濃縮氣泡飲', 'Espresso Tonic', 15, 'soda', [['ice', 2], ['soda', 2], ['shot', 1]], 'goblet', ['iced', 'black', 'strong'], 'orange'),
+  ...dr('lemon_soda', '檸檬氣泡飲', 'Lemon Soda', 15, 'soda', [['ice', 2], ['lemon', 1], ['soda', 2]], 'goblet', ['iced', 'cheap', 'mild'], 'lemon'),
+  ...dr('mango_smoothie', '芒果冰沙', 'Mango Smoothie', 16, 'blender', [['ice', 2], ['mango', 2], ['coldmilk', 1], ['blend', 1]], 'frappe', ['sweet', 'iced'], 'mango'),
+  ...dr('strawberry_frappe', '草莓星冰樂', 'Strawberry Frappé', 17, 'blender', [['ice', 2], ['strawberry', 2], ['coldmilk', 2], ['blend', 1], ['cream', 1]], 'frappe', ['sweet', 'iced', 'milk'], 'strawberry'),
+  ...dr('mojito_coffee', '薄荷莫西多咖啡', 'Mint Mojito Coffee', 18, 'soda', [['mint', 1], ['lemon', 1], ['ice', 2], ['soda', 1], ['shot', 1]], 'goblet', ['iced', 'strong'], 'mint'),
+  ...dr('hazelnut_latte', '榛果拿鐵', 'Hazelnut Latte', 19, 'flavor', [['hazelnut', 1], ['shot', 1], ['milk', 3]], 'glass', ['sweet', 'hot', 'milk']),
+  ...dr('rose_latte', '玫瑰拿鐵', 'Rose Latte', 20, 'flavor', [['rose', 1], ['shot', 1], ['milk', 2], ['foam', 1]], 'glass', ['sweet', 'hot', 'milk', 'mild'], 'rose'),
+  ...dr('brownsugar_latte', '黑糖冰拿鐵', 'Brown Sugar Latte', 21, 'flavor', [['brownsugar', 1], ['ice', 1], ['coldmilk', 2], ['shot', 1]], 'tall', ['sweet', 'iced', 'milk']),
+  ...dr('seasalt_latte', '海鹽焦糖拿鐵', 'Sea Salt Caramel Latte', 22, 'flavor', [['caramel', 1], ['shot', 1], ['milk', 2], ['seasalt', 1]], 'glass', ['sweet', 'hot', 'milk']),
+  ...dr('oat_latte', '燕麥拿鐵', 'Oat Latte', 23, 'plant', [['shot', 1], ['oat', 3]], 'glass', ['milk', 'hot', 'mild']),
+  ...dr('coconut_latte', '椰香冰拿鐵', 'Iced Coconut Latte', 24, 'plant', [['ice', 2], ['coconut', 2], ['shot', 1]], 'tall', ['sweet', 'iced', 'milk']),
+  ...dr('hojicha_latte', '焙茶拿鐵', 'Hojicha Latte', 25, 'tea', [['hojicha', 1], ['water', 1], ['milk', 3]], 'glass', ['mild', 'hot', 'milk']),
+  ...dr('matcha_frappe', '抹茶星冰樂', 'Matcha Frappé', 27, 'tea', [['ice', 2], ['matcha', 1], ['coldmilk', 2], ['blend', 1], ['cream', 1]], 'frappe', ['sweet', 'iced', 'milk'], 'matcha'),
+  ...dr('coconut_dutch', '椰香冰滴', 'Coconut Cold Drip', 30, 'coldbrew', [['ice', 2], ['dutch', 2], ['coconut', 1]], 'tall', ['iced', 'strong', 'milk']),
+  ...dr('rose_dutch', '玫瑰冰滴氣泡', 'Rose Cold Drip Soda', 32, 'coldbrew', [['ice', 2], ['dutch', 1], ['soda', 1], ['rose', 1]], 'goblet', ['iced', 'strong', 'sweet'], 'rose'),
+  ...dr('hazelnut_mocha', '榛果摩卡', 'Hazelnut Mocha', 33, 'flavor', [['hazelnut', 1], ['choco', 1], ['shot', 1], ['milk', 2], ['cream', 1]], 'mug', ['sweet', 'hot', 'milk'], 'cocoa'),
+  ...dr('irish_cream', '愛爾蘭風奶油咖啡', 'Irish-style Cream Coffee', 34, 'frother', [['brownsugar', 1], ['shot', 2], ['water', 1], ['cream', 2]], 'glass', ['sweet', 'hot', 'strong', 'classic']),
+  ...dr('geisha_pour', '藝伎手沖', 'Geisha Pour Over', 36, 'pourover', [['pour', 3]], 'teacup', ['strong', 'hot', 'black', 'classic']),
+  ...dr('honey_oat', '蜂蜜燕麥冰拿鐵', 'Honey Oat Iced Latte', 37, 'plant', [['honey', 1], ['ice', 2], ['oat', 2], ['shot', 1]], 'tall', ['sweet', 'iced', 'milk', 'mild']),
+  ...dr('mango_coconut', '芒果椰奶冰沙', 'Mango Coconut Smoothie', 38, 'blender', [['ice', 2], ['mango', 1], ['coconut', 2], ['blend', 1]], 'frappe', ['sweet', 'iced'], 'mango'),
+  ...dr('royal_mocha', '皇家黑糖摩卡', 'Royal Brown Sugar Mocha', 40, 'flavor', [['brownsugar', 1], ['choco', 1], ['shot', 2], ['milk', 2], ['cream', 1]], 'mug', ['sweet', 'hot', 'milk', 'strong'], 'cocoa'),
+  ...dr('rose_matcha', '玫瑰抹茶拿鐵', 'Rose Matcha Latte', 42, 'tea', [['rose', 1], ['matcha', 1], ['milk', 2], ['foam', 1]], 'glass', ['sweet', 'hot', 'milk', 'mild'], 'rose'),
+  ...dr('salted_dutch', '海鹽奶蓋冰滴', 'Sea Salt Cream Cold Drip', 45, 'coldbrew', [['ice', 1], ['dutch', 2], ['seasalt', 1]], 'rocks', ['iced', 'strong', 'classic']),
+  ...dr('grand_special', '咖啡巷大師特調', 'Coffee Lane Grand Signature', 48, 'syrup', [['vanilla', 1], ['shot', 2], ['honey', 1], ['milk', 2], ['foam', 1], ['cinnamon', 1]], 'cup', ['sweet', 'hot', 'milk', 'classic']),
 };
 export const RECIPE_ORDER = Object.keys(RECIPES);
 // 評比門檻：賣出幾杯後可考下一顆星
@@ -110,7 +172,15 @@ export const SIDE_MACHINES = {
   fridge: { name: '甜點冷藏櫃', lv: 13, cost: 9000 },
   waffle: { name: '鬆餅機', lv: 18, cost: 16000 },
   bench: { name: '甜點師工作台', lv: 23, cost: 28000 },
+  gelato: { name: '義式冰淇淋櫃', lv: 16, cost: 12000 },
+  crepe: { name: '可麗餅煎台', lv: 26, cost: 34000 },
+  patisserie: { name: '法式甜點烤箱', lv: 32, cost: 52000 },
+  wagashi: { name: '和菓子工坊', lv: 36, cost: 70000 },
 };
+function sd(id, name, machine, lv, color, en) {
+  const price = Math.round(10 + lv * 2.6), pcs = 16;
+  return { [id]: { name, en, machine, lv, color, time: Math.round(Math.min(14400, 40 * Math.pow(1.2, lv))), pcs, cost: Math.round(price * pcs * 0.3), price, exp: 1 + Math.floor(lv / 7) } };
+}
 export const SIDES = {
   toast: { name: '奶油厚片', machine: 'toaster', lv: 4, time: 60, pcs: 12, cost: 50, price: 14, exp: 1, color: '#e2b46a' },
   croissant: { name: '可頌', machine: 'toaster', lv: 6, time: 240, pcs: 12, cost: 90, price: 22, exp: 1, color: '#d79a4f' },
@@ -123,6 +193,40 @@ export const SIDES = {
   honey_toast: { name: '蜂蜜厚片塔', machine: 'waffle', lv: 20, time: 3600, pcs: 16, cost: 420, price: 58, exp: 4, color: '#e0a64a' },
   millefeuille: { name: '草莓千層', machine: 'bench', lv: 23, time: 5400, pcs: 16, cost: 520, price: 70, exp: 5, color: '#f3d9c9' },
   montblanc: { name: '蒙布朗', machine: 'bench', lv: 27, time: 7200, pcs: 16, cost: 600, price: 80, exp: 5, color: '#b88a5e' },
+  // ---- 擴充甜點 ----
+  ...sd('pain_choc', '巧克力可頌', 'toaster', 7, '#c98a4f', 'Pain au Chocolat'),
+  ...sd('bagel', '奶油乳酪貝果', 'toaster', 9, '#d9a66a', 'Cream Cheese Bagel'),
+  ...sd('muffin', '藍莓瑪芬', 'oven', 9, '#d9a65c', 'Blueberry Muffin'),
+  ...sd('cinnamon_roll', '肉桂捲', 'oven', 11, '#c98a4f', 'Cinnamon Roll'),
+  ...sd('cookie', '巧克力豆餅乾', 'oven', 14, '#d9a65c', 'Chocolate Chip Cookie'),
+  ...sd('pudding', '焦糖布丁', 'fridge', 14, '#f2d36b', 'Caramel Pudding'),
+  ...sd('panna_cotta', '莓果奶酪', 'fridge', 15, '#f8f2e6', 'Berry Panna Cotta'),
+  ...sd('vanilla_gelato', '香草冰淇淋', 'gelato', 16, '#f8edc8', 'Vanilla Gelato'),
+  ...sd('apple_pie', '蘋果派', 'oven', 17, '#d99a4f', 'Apple Pie'),
+  ...sd('pistachio_gelato', '開心果冰淇淋', 'gelato', 18, '#b9cf8a', 'Pistachio Gelato'),
+  ...sd('croffle', '可頌鬆餅', 'waffle', 19, '#d99a4f', 'Croffle'),
+  ...sd('matcha_roll', '抹茶生乳捲', 'fridge', 19, '#8fae5a', 'Matcha Roll Cake'),
+  ...sd('parfait', '莓果芭菲', 'gelato', 20, '#e8a0b0', 'Berry Parfait'),
+  ...sd('canele', '可麗露', 'oven', 21, '#7a3a1e', 'Canelé'),
+  ...sd('choco_mousse', '巧克力慕斯', 'fridge', 22, '#5a3324', 'Chocolate Mousse'),
+  ...sd('affogato', '阿法奇朵', 'gelato', 22, '#f8edc8', 'Affogato'),
+  ...sd('souffle_pancake', '舒芙蕾鬆餅', 'waffle', 24, '#f2d9a0', 'Soufflé Pancake'),
+  ...sd('fruit_tart', '綜合水果塔', 'bench', 25, '#e9c46a', 'Fruit Tart'),
+  ...sd('crepe_choc', '巧克力香蕉可麗餅', 'crepe', 26, '#e2b46a', 'Chocolate Banana Crêpe'),
+  ...sd('mille_crepe', '千層可麗餅蛋糕', 'crepe', 28, '#f2e2b6', 'Mille Crêpe Cake'),
+  ...sd('shortcake', '草莓鮮奶油蛋糕', 'bench', 29, '#fbf3ea', 'Strawberry Shortcake'),
+  ...sd('crepe_suzette', '橙香可麗餅', 'crepe', 30, '#f0a43a', 'Crêpe Suzette'),
+  ...sd('opera', '歐培拉蛋糕', 'bench', 31, '#3b2116', 'Opéra Cake'),
+  ...sd('macaron', '法式馬卡龍', 'patisserie', 32, '#e8a0b0', 'Macarons'),
+  ...sd('eclair', '閃電泡芙', 'patisserie', 33, '#c98a4f', 'Éclair'),
+  ...sd('choux', '卡士達泡芙', 'patisserie', 34, '#e2b46a', 'Cream Puff'),
+  ...sd('dorayaki', '紅豆銅鑼燒', 'wagashi', 36, '#b9763a', 'Dorayaki'),
+  ...sd('saint_honore', '聖多諾黑', 'patisserie', 37, '#e2b46a', 'Saint-Honoré'),
+  ...sd('matcha_parfait', '抹茶芭菲', 'wagashi', 38, '#7fa24a', 'Matcha Parfait'),
+  ...sd('black_forest', '黑森林蛋糕', 'patisserie', 39, '#3b2116', 'Black Forest Cake'),
+  ...sd('warabi', '黑糖蕨餅', 'wagashi', 40, '#c9a46a', 'Warabi Mochi'),
+  ...sd('taiyaki', '鯛魚燒', 'wagashi', 41, '#c98a3a', 'Taiyaki'),
+  ...sd('sakura_mochi', '櫻花麻糬', 'wagashi', 43, '#f2b8c6', 'Sakura Mochi'),
 };
 export const SIDE_ORDER = Object.keys(SIDES);
 export const SIDE_BURN = 1800; // 點心烤好後 30 分鐘內要收，不然會烤焦
@@ -146,12 +250,14 @@ export const BAR_MACHINES = {
   press: { kind: 'kitchen', machine: 'press', name: '帕尼尼壓烤機', lv: 15, cost: 14000 },
   pizza: { kind: 'kitchen', machine: 'pizza', name: '窯烤披薩爐', lv: 21, cost: 26000 },
 };
+// 新增的點心機、廚房機器自動加進吧台機器清單
+for (const [k, v] of Object.entries(SIDE_MACHINES)) if (!BAR_MACHINES[k]) BAR_MACHINES[k] = { kind: 'side', machine: k, name: v.name, lv: v.lv, cost: v.cost };
 // 吧台機器數量上限（依等級）
 export function machineCap(kind, lv) {
   if (kind === 'roaster') return lv < 5 ? 1 : lv < 12 ? 2 : lv < 22 ? 3 : 4;
   if (kind === 'espresso') return lv < 3 ? 1 : lv < 9 ? 2 : lv < 16 ? 3 : lv < 26 ? 4 : 5;
-  if (kind === 'kitchen') return lv < 15 ? 1 : lv < 25 ? 2 : 3;
-  return lv < 10 ? 1 : lv < 20 ? 2 : 3;
+  if (kind === 'kitchen') return lv < 15 ? 1 : lv < 25 ? 2 : lv < 35 ? 3 : 4;
+  return lv < 10 ? 1 : lv < 20 ? 2 : lv < 32 ? 3 : 4;
 }
 
 // ---------------- 擴店 ----------------
@@ -231,6 +337,7 @@ export const FURNITURE = {
   // 咖啡車代幣限定（不在商店販售）
   w_truck_art: { kind: 'wall', name: '咖啡車海報', lv: 1, cost: 600, score: 12, hidden: true },
   sign_truck: { kind: 'decor', name: '咖啡車立牌', lv: 1, cost: 1200, score: 25, hidden: true },
+  sign_heart: { kind: 'decor', name: '愛心食物銀行立牌', lv: 1, cost: 2000, score: 40, hidden: true },
 };
 export const FLOORS = {
   herring_walnut: { name: '胡桃木人字拼', lv: 1, cost: 0, score: 0 },
@@ -575,7 +682,20 @@ export const KITCHEN_MACHINES = {
   stove: { name: '義大利麵爐', lv: 11, cost: 8000 },
   press: { name: '帕尼尼壓烤機', lv: 15, cost: 14000 },
   pizza: { name: '窯烤披薩爐', lv: 21, cost: 26000 },
+  rice: { name: '日式定食台', lv: 9, cost: 5000 },
+  salad: { name: '沙拉吧', lv: 12, cost: 8000 },
+  wok: { name: '中華炒鍋', lv: 14, cost: 11000 },
+  fryer: { name: '炸物鍋', lv: 17, cost: 15000 },
+  soup: { name: '燉湯爐', lv: 19, cost: 18000 },
+  grill: { name: '炭烤爐', lv: 25, cost: 32000 },
+  seafood: { name: '海鮮料理台', lv: 30, cost: 48000 },
+  korean: { name: '韓式料理台', lv: 34, cost: 60000 },
+  sushi: { name: '壽司吧台', lv: 40, cost: 85000 },
 };
+function ml(id, name, machine, lv, color, en) {
+  const price = Math.round(30 + lv * 3.6), pcs = lv < 20 ? 12 : 10;
+  return { [id]: { name, en, machine, lv, color, time: Math.round(Math.min(14400, 90 * Math.pow(1.16, lv))), pcs, cost: Math.round(price * pcs * 0.3), price, exp: 2 + Math.floor(lv / 6) } };
+}
 export const MEALS = {
   pancake: { name: '經典美式鬆餅', machine: 'griddle', lv: 7, time: 180, pcs: 10, cost: 120, price: 38, exp: 3, color: '#e0a85a' },
   frenchtoast: { name: '法式吐司', machine: 'griddle', lv: 8, time: 360, pcs: 10, cost: 160, price: 44, exp: 3, color: '#d99a4f' },
@@ -589,8 +709,60 @@ export const MEALS = {
   margherita: { name: '瑪格麗特披薩', machine: 'pizza', lv: 21, time: 2400, pcs: 10, cost: 480, price: 96, exp: 6, color: '#d6553f' },
   truffle_pizza: { name: '松露蘑菇披薩', machine: 'pizza', lv: 24, time: 3600, pcs: 10, cost: 600, price: 118, exp: 7, color: '#8a6a4a' },
   seafood_pizza: { name: '海鮮總匯披薩', machine: 'pizza', lv: 28, time: 5400, pcs: 10, cost: 720, price: 135, exp: 8, color: '#e07a5f' },
+  // ---- 擴充料理（各國料理） ----
+  ...ml('curry_rice', '日式咖哩飯', 'rice', 9, '#b8792a', 'Japanese Curry Rice'),
+  ...ml('omurice', '蛋包飯', 'rice', 11, '#f2c84a', 'Omurice'),
+  ...ml('caesar', '凱薩沙拉', 'salad', 12, '#8fbf5a', 'Caesar Salad'),
+  ...ml('oyakodon', '親子丼', 'rice', 13, '#e9b84a', 'Oyakodon'),
+  ...ml('aglio', '蒜香辣椒麵', 'stove', 13, '#efd9a0', 'Aglio e Olio'),
+  ...ml('big_breakfast', '英式全日早餐', 'griddle', 13, '#d9a65c', 'Full Breakfast'),
+  ...ml('fried_rice', '黃金蛋炒飯', 'wok', 14, '#efcf6a', 'Golden Egg Fried Rice'),
+  ...ml('katsudon', '豬排丼', 'rice', 15, '#d99a4f', 'Katsudon'),
+  ...ml('bolognese', '波隆那肉醬麵', 'stove', 16, '#b8452e', 'Spaghetti Bolognese'),
+  ...ml('nicoise', '尼斯沙拉', 'salad', 16, '#7faa5a', 'Niçoise Salad'),
+  ...ml('chow_mein', '什錦炒麵', 'wok', 16, '#c98a3a', 'Chow Mein'),
+  ...ml('fries', '綜合薯條拼盤', 'fryer', 17, '#f2c24e', 'Fries Platter'),
+  ...ml('club', '總匯三明治', 'press', 18, '#e9c27a', 'Club Sandwich'),
+  ...ml('fish_chips', '炸魚薯條', 'fryer', 19, '#e0a84a', 'Fish & Chips'),
+  ...ml('pumpkin_soup', '南瓜濃湯', 'soup', 19, '#f0a43a', 'Pumpkin Soup'),
+  ...ml('mapo', '麻婆豆腐飯', 'wok', 20, '#c9452e', 'Mapo Tofu Rice'),
+  ...ml('salmon_poke', '鮭魚波奇碗', 'salad', 20, '#f08a6a', 'Salmon Poke Bowl'),
+  ...ml('karaage', '日式唐揚雞', 'fryer', 21, '#c9822e', 'Karaage'),
+  ...ml('onion_soup', '法式洋蔥湯', 'soup', 21, '#c98a4f', 'French Onion Soup'),
+  ...ml('pepperoni', '臘腸披薩', 'pizza', 22, '#c9452e', 'Pepperoni Pizza'),
+  ...ml('kungpao', '宮保雞丁', 'wok', 22, '#b8452e', 'Kung Pao Chicken'),
+  ...ml('quinoa', '藜麥能量碗', 'salad', 23, '#b9a46a', 'Quinoa Power Bowl'),
+  ...ml('clam_chowder', '蛤蜊巧達湯', 'soup', 23, '#f4ead2', 'Clam Chowder'),
+  ...ml('calamari', '酥炸花枝圈', 'fryer', 24, '#e9c27a', 'Fried Calamari'),
+  ...ml('steak', '炭烤肋眼牛排', 'grill', 25, '#7a3a26', 'Grilled Ribeye'),
+  ...ml('borscht', '羅宋湯', 'soup', 25, '#b8352e', 'Borscht'),
+  ...ml('quattro', '四種起司披薩', 'pizza', 26, '#f2d36b', 'Quattro Formaggi'),
+  ...ml('chicken', '迷迭香烤雞腿', 'grill', 26, '#c98a3a', 'Rosemary Roast Chicken'),
+  ...ml('unadon', '鰻魚飯', 'rice', 27, '#8a4a22', 'Unadon'),
+  ...ml('skewers', '炭烤串燒拼盤', 'grill', 27, '#a8562e', 'Yakitori Platter'),
+  ...ml('salmon_steak', '香煎鮭魚排', 'grill', 28, '#f08a6a', 'Pan-seared Salmon'),
+  ...ml('tempura', '天婦羅拼盤', 'fryer', 29, '#f2d9a0', 'Tempura Platter'),
+  ...ml('lamb', '香煎羊排', 'grill', 30, '#8a4a34', 'Lamb Chops'),
+  ...ml('paella', '西班牙海鮮燉飯', 'seafood', 30, '#e9a63a', 'Seafood Paella'),
+  ...ml('xo_rice', 'XO醬海鮮炒飯', 'wok', 31, '#d9a65c', 'XO Seafood Fried Rice'),
+  ...ml('garlic_shrimp', '蒜味奶油蝦', 'seafood', 31, '#f08a5a', 'Garlic Butter Shrimp'),
+  ...ml('oysters', '生蠔拼盤', 'seafood', 32, '#d9d4c4', 'Oyster Platter'),
+  ...ml('lobster_pasta', '龍蝦義大利麵', 'stove', 33, '#e0603e', 'Lobster Linguine'),
+  ...ml('grilled_lobster', '焗烤龍蝦', 'seafood', 34, '#e0603e', 'Lobster Thermidor'),
+  ...ml('bibimbap', '石鍋拌飯', 'korean', 34, '#e0603e', 'Dolsot Bibimbap'),
+  ...ml('tteokbokki', '辣炒年糕', 'korean', 35, '#d9402e', 'Tteokbokki'),
+  ...ml('bouillabaisse', '馬賽魚湯', 'soup', 35, '#e0703e', 'Bouillabaisse'),
+  ...ml('kimchi_stew', '泡菜豆腐鍋', 'korean', 36, '#d9502e', 'Kimchi Stew'),
+  ...ml('crab', '辣醬螃蟹', 'seafood', 37, '#d9502e', 'Chili Crab'),
+  ...ml('korean_chicken', '韓式甜辣炸雞', 'korean', 38, '#c9452e', 'Korean Fried Chicken'),
+  ...ml('sushi_set', '握壽司拼盤', 'sushi', 40, '#f08a6a', 'Nigiri Set'),
+  ...ml('maki', '花壽司捲', 'sushi', 41, '#2f3a2a', 'Maki Rolls'),
+  ...ml('chirashi', '海鮮散壽司', 'sushi', 42, '#f08a6a', 'Chirashi Bowl'),
+  ...ml('sashimi', '綜合生魚片', 'sushi', 44, '#f08a6a', 'Sashimi Platter'),
+  ...ml('toro', '鮪魚大腹握壽司', 'sushi', 47, '#f0a090', 'Otoro Nigiri'),
 };
 export const MEAL_ORDER = Object.keys(MEALS);
+for (const [k, v] of Object.entries(KITCHEN_MACHINES)) if (!BAR_MACHINES[k]) BAR_MACHINES[k] = { kind: 'kitchen', machine: k, name: v.name, lv: v.lv, cost: v.cost };
 // 客製加料：每道料理最多加 3 種，每種讓整批售價提高
 export const TOPPINGS = {
   cheese: { name: '濃郁起司', lv: 7, cost: 60, bonus: 0.12 },
@@ -608,3 +780,21 @@ export const MEAL_CHANCE = 0.32;
 
 // 2 樓甜點區、外送、餐車、評級（擴充）
 export const SECOND_FLOOR_LV = 30;
+
+// 自動經營：每一項要達到等級、花錢「聘請小幫手」後才能使用
+export const AUTO_UNLOCK = {
+  events: { lv: 3, gold: 500, name: '店內事件' },
+  roast: { lv: 5, gold: 1500, name: '烘豆' },
+  quests: { lv: 6, gold: 1000, name: '領任務獎勵' },
+  cheer: { lv: 8, gold: 3000, name: '員工打氣' },
+  brew: { lv: 10, gold: 6000, name: '沖煮' },
+  side: { lv: 12, gold: 9000, name: '點心' },
+  neighbors: { lv: 14, gold: 6000, name: '鄰居互動' },
+  cat: { lv: 15, gold: 5000, name: '餵店貓' },
+  meal: { lv: 17, gold: 16000, name: '料理' },
+  delivery: { lv: 20, gold: 20000, name: '外送' },
+  recruit: { lv: 22, coupon: 20, name: '招攬路人' },
+  special: { lv: 26, coupon: 30, name: '常客訂單' },
+  offline: { lv: 9, gold: 4000, name: '離線營業' },
+};
+export const AUTO_PANEL_LV = 3;

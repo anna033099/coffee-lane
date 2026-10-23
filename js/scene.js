@@ -8,12 +8,7 @@ import { resolveLook } from './sim.js';
 import { I, itemIcon } from './icons.js';
 import { now } from './state.js';
 
-const MACHINE_MODEL = {
-  roaster_classic: () => MD.roaster(0), roaster_forest: () => MD.roaster(1), roaster_navy: () => MD.roaster(2),
-  espresso_steel: () => MD.espressoMachine(0), espresso_cream: () => MD.espressoMachine(1), espresso_green: () => MD.espressoMachine(2),
-  toaster: () => MD.toaster(), oven: () => MD.oven(0), fridge: () => MD.dessertFridge(), waffle: () => MD.waffleIron(), bench: () => MD.pastryBench(),
-  griddle: () => MD.griddle(), stove: () => MD.pastaStove(), press: () => MD.paniniPress(), pizza: () => MD.pizzaOven(),
-};
+const MACHINE_MODEL = MD.MACHINE_BUILDERS;
 const ROT = [0, Math.PI / 2, Math.PI, -Math.PI / 2];
 
 export class World {
@@ -203,6 +198,8 @@ export class World {
         this.catSprite.setType(s.cat.type);
         this.catSprite.set(cr.x, cr.y); this.catSprite.setFrame(this.catAI.frame(), cr.dir === 1);
       } else if (this.catSprite) { this.catSprite.dispose(); this.catSprite = null; }
+    } else if (this.mode === 'up' && this.up) {
+      for (const a of this.up.actors) { const sp = this.spriteFor(a.id, a.look); sp.set(a.x, a.y, a.sit ? 0.3 : 0); sp.setFrame(a.frame, a.flip); sp.setOpacity(1); sp.setShadow(!a.sit); }
     } else if (this.visit) {
       for (const a of this.visit.actors) { const sp = this.spriteFor(a.id, a.look); sp.set(a.x, a.y, a.sit ? 0.3 : 0); sp.setFrame(a.frame, a.flip); sp.setOpacity(1); sp.setShadow(!a.sit); }
     }
@@ -231,30 +228,31 @@ export class World {
     const C = 2 * Math.PI * 17;
     return `<svg class="ring" viewBox="0 0 40 40"><circle cx="20" cy="20" r="17" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="4"/><circle cx="20" cy="20" r="17" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - p)}" transform="rotate(-90 20 20)"/></svg>`;
   }
+  machineBubble(m, X, t) {
+    const g = this.g;
+    const st = g.status(m, t);
+    const k = g.mdef(m).kind, j = m.job;
+    const kind = j ? (j.kind === 'roast' ? 'roast' : j.kind === 'brew' ? 'drink' : j.kind) : null;
+    const pick = { type: 'machine', slot: m.slot };
+    const Y = 0.45, Z = 1.95;
+    if (st.st === 'idle') {
+      const ic = k === 'roaster' ? I.bean : k === 'espresso' ? I.cup : k === 'side' ? I.cake : I.meal;
+      this.bubble('m' + m.slot, `<div class="b-idle">${ic}</div>`, 'idle', X, Y, Z - 0.25, pick);
+    } else if (st.st === 'run') {
+      this.bubble('m' + m.slot, `<div class="b-run">${this.ring(st.p, kind === 'roast' ? '#d9775f' : '#4f8a78')}<div class="b-ic">${itemIcon(kind, j.item, 30)}</div></div>`, 'run', X, Y, Z, pick);
+    } else if (st.st === 'sell') {
+      this.bubble('m' + m.slot, `<div class="b-sell"><div class="b-ic">${itemIcon('drink', j.item, 30)}</div><b>${j.sellLeft}</b></div>`, 'sell', X, Y, Z, pick);
+    } else if (st.st === 'done') {
+      this.bubble('m' + m.slot, `<div class="b-done"><div class="b-ic">${itemIcon(kind, j.item, 36)}</div><i>${I.check}</i></div>`, 'done', X, Y, Z + 0.1, pick);
+    } else if (st.st === 'burnt') {
+      this.bubble('m' + m.slot, `<div class="b-burnt">${I.smoke}</div>`, 'burnt', X, Y, Z, pick);
+    }
+  }
   updateBubbles() {
     for (const b of this.bubbles.values()) b.alive = false;
     const g = this.g, s = g.s, t = now();
     if (this.mode === 'home' && !this.edit.on) {
-      for (const m of s.machines) {
-        if (m.slot > g.slots) continue;
-        const st = g.status(m, t);
-        const k = g.mdef(m).kind, j = m.job;
-        const kind = j ? (j.kind === 'roast' ? 'roast' : j.kind === 'brew' ? 'drink' : j.kind) : null;
-        const pick = { type: 'machine', slot: m.slot };
-        const X = m.slot + 0.5, Y = 0.45, Z = 1.95;
-        if (st.st === 'idle') {
-          const ic = k === 'roaster' ? I.bean : k === 'espresso' ? I.cup : k === 'side' ? I.cake : I.meal;
-          this.bubble('m' + m.slot, `<div class="b-idle">${ic}</div>`, 'idle', X, Y, Z - 0.25, pick);
-        } else if (st.st === 'run') {
-          this.bubble('m' + m.slot, `<div class="b-run">${this.ring(st.p, kind === 'roast' ? '#d9775f' : '#4f8a78')}<div class="b-ic">${itemIcon(kind, j.item, 30)}</div></div>`, 'run', X, Y, Z, pick);
-        } else if (st.st === 'sell') {
-          this.bubble('m' + m.slot, `<div class="b-sell"><div class="b-ic">${itemIcon('drink', j.item, 30)}</div><b>${j.sellLeft}</b></div>`, 'sell', X, Y, Z, pick);
-        } else if (st.st === 'done') {
-          this.bubble('m' + m.slot, `<div class="b-done"><div class="b-ic">${itemIcon(kind, j.item, 36)}</div><i>${I.check}</i></div>`, 'done', X, Y, Z + 0.1, pick);
-        } else if (st.st === 'burnt') {
-          this.bubble('m' + m.slot, `<div class="b-burnt">${I.smoke}</div>`, 'burnt', X, Y, Z, pick);
-        }
-      }
+      for (const m of s.machines) { if (m.slot > g.slots) continue; this.machineBubble(m, m.slot + 0.5, t); }
       for (const c of g.customers) {
         const pick = { type: 'actor', id: c.id };
         const z = c.pose === 'sit' ? 1.5 : 1.78;
@@ -271,6 +269,7 @@ export class World {
         if (st.energy <= 0) this.bubble('s' + st.id, `<div class="b-tired">${I.zzz}<div class="ebar"><i style="width:0%"></i></div></div>`, 'tired', rt.x, rt.y, 1.85, pick);
         else if (pct < 0.3) this.bubble('s' + st.id, `<div class="b-energy"><div class="ebar"><i style="width:${Math.round(pct * 100)}%"></i></div></div>`, 'energy', rt.x, rt.y, 1.85, pick);
       }
+      if (!g.selling(t)) this.bubble('nosell', `<div class="b-hint">${I.cup}<span>櫃檯沒有飲品，客人不會上門</span></div>`, 'hint', 1.5, 2.5, 1.7, { type: 'hint' });
       for (const id of s.messyChairs) { const f = s.furniture.find(q => q.id === id); if (f) this.bubble('mc' + id, `<div class="b-ev small">${I.broom}</div>`, 'ev', f.x + 0.5, f.y + 0.5, 1.15, { type: 'furniture', id }); }
       for (const id of s.dirtyTables) { const f = s.furniture.find(q => q.id === id); if (f) this.bubble('dt' + id, `<div class="b-ev small">${I.sparkle}</div>`, 'ev', f.x + 0.5, f.y + 0.5, 1.25, { type: 'furniture', id }); }
       for (const p of g.passers) {
@@ -278,6 +277,12 @@ export class World {
         const pick = { type: 'passer', id: p.id };
         if (p.regId) this.bubble('p' + p.id, `<div class="b-recruit reg">${I.heart}<span>${D.REGULARS[p.regId].name}</span></div>`, 'recruit', p.x, p.y, 1.85, pick);
         else this.bubble('p' + p.id, `<div class="b-recruit">!</div>`, 'recruit', p.x, p.y, 1.85, pick);
+      }
+    } else if (this.mode === 'up' && this.up) {
+      for (let i = 0; i < 4; i++) {
+        const slot = 100 + i, m = s.machines.find(q => q.slot === slot);
+        if (m) this.machineBubble(m, i + 1.5, t);
+        else this.bubble('e' + slot, `<div class="b-plus">+</div>`, 'idle', i + 1.5, 0.45, 1.7, { type: 'emptyslot', slot });
       }
     } else if (this.mode === 'visit' && this.visit) {
       for (const h of this.visit.spots) {
@@ -290,7 +295,7 @@ export class World {
   // 飄字（+金幣等）
   floater(pos, text, kind) {
     let x, y, z;
-    if (pos.slot !== undefined) { x = pos.slot + 0.5; y = 0.45; z = 2.2; } else { x = pos.x; y = pos.y; z = pos.z || 1.6; }
+    if (pos.slot !== undefined) { x = pos.slot >= 100 ? pos.slot - 100 + 1.5 : pos.slot + 0.5; y = 0.45; z = 2.2; } else { x = pos.x; y = pos.y; z = pos.z || 1.6; }
     const p = this.e.project(x, y, z);
     const el = document.createElement('div');
     el.className = 'floater ' + kind;
@@ -487,8 +492,66 @@ export class World {
     this.sync();
   }
 
+  // ================== 2 樓甜點區 ==================
+  enterUpstairs() {
+    const e = this.e, g = this.g;
+    this.mode = 'up';
+    for (const nm of ['barGroup', 'furnGroup', 'wallGroup', 'cupGroup']) this.clearGroup(nm);
+    for (const sp of this.sprites.values()) sp.dispose(); this.sprites.clear();
+    if (this.catSprite) { this.catSprite.dispose(); this.catSprite = null; }
+    this.sig = {};
+    e.buildShell(7, 7, 'marble', 'blush');
+    e.outdoor.visible = false;
+    const fg = this.furnGroup = new THREE.Group();
+    const layout = [['tbl_pink', 2, 4], ['ch_rose', 2, 3, 'pz'], ['ch_rose', 1, 4, 'px'], ['tbl_marble', 5, 4], ['ch_leather', 5, 3, 'pz'], ['ch_leather', 4, 4, 'px'],
+      ['tbl_green', 3, 6], ['ch_velvet', 2, 6, 'px'], ['ch_velvet', 4, 6, 'nx'], ['cakestand', 0, 2], ['fiddle', 6, 6], ['floorlamp', 0, 3], ['gramophone', 6, 2], ['monstera', 6, 5]];
+    const actors = []; let k = 0;
+    for (const [type, x, y, fc] of layout) {
+      const o = bakedModel('f_' + type, () => MD.build(type)); o.position.set(x + 0.5, 0, y + 0.5); if (fc) o.rotation.y = FACING_ROT[fc]; fg.add(o);
+      if (D.FURNITURE[type].kind === 'chair') actors.push({ id: 'uc' + k, look: g.lookPool[(k * 5 + 2) % g.lookPool.length], x: x + 0.5, y: y + 0.5, sit: true, frame: fc === 'nx' || fc === 'nz' ? 'b_sit' : 'f_sit', flip: fc === 'px' || fc === 'nz' }), k++;
+    }
+    const st = MD.staircase(); st.position.set(0.5, 0, 6.5); fg.add(st);
+    for (const [x, y] of [[2, 4], [5, 3]]) { const p = bakedModel('p_pendant_globe', () => MD.build('pendant_globe')); p.position.set(x + 0.5, 0, y + 0.5); fg.add(p); }
+    e.items.add(fg);
+    const wg = this.wallGroup = new THREE.Group();
+    for (const [type, i] of [['w_window', 2], ['w_sconce', 3.5], ['w_mirror', 5]]) { const o = bakedModel('w_' + type, () => MD.build(type)); o.position.set(0, 0, i + 0.5); o.rotation.y = Math.PI / 2; wg.add(o); }
+    e.items.add(wg);
+    actors.push({ id: 'uchef', look: { skin: '#f0c9ad', hair: '#d9b26a', hairStyle: 'short', top: '#f4efe6', bottom: '#5b4a40', apron: '#d9cdb8', art: 'npc_mike' }, x: 5.6, y: 1.35, frame: 'f_happy', flip: true });
+    this.up = { actors };
+    this.syncUp(true);
+    this.collectLights(); e.shadowsDirty(); this.refreshPickables();
+    e.zoom = 1; e.pan.set(0, 0); e.fitCamera();
+  }
+  syncUp(force) {
+    const g = this.g, s = g.s;
+    const sig = s.machines.filter(m => m.slot >= 100).map(m => m.type + '@' + m.slot).join(',');
+    if (!force && this.sig.up === sig) return;
+    this.sig.up = sig;
+    this.clearGroup('barGroup');
+    const grp = this.barGroup = new THREE.Group();
+    for (let x = 0; x < 6; x++) { const b = bakedModel('bar', () => MD.backBar(true)); b.position.set(x + 0.5, 0, 0.5); grp.add(b); }
+    for (let i = 0; i < 4; i++) {
+      const slot = 100 + i, m = s.machines.find(q => q.slot === slot);
+      const o = m ? bakedModel('m_' + m.type, MACHINE_MODEL[m.type] || (() => MD.grinder())) : bakedModel('shelf' + (i % 3), () => MD.shelfDecor(i % 3));
+      o.position.set(i + 1.5, 0, 0.5);
+      o.traverse(n => { n.userData.pick = m ? { type: 'machine', slot } : { type: 'emptyslot', slot }; });
+      grp.add(o);
+    }
+    this.e.items.add(grp);
+    this.collectLights(); this.e.shadowsDirty(); this.refreshPickables();
+  }
+  exitUpstairs() {
+    this.mode = 'home'; this.up = null; this.e.outdoor.visible = true;
+    for (const nm of ['barGroup', 'furnGroup', 'wallGroup', 'cupGroup']) this.clearGroup(nm);
+    for (const sp of this.sprites.values()) sp.dispose(); this.sprites.clear();
+    this.sig = {};
+    this.sync();
+    this.e.zoom = 1; this.e.pan.set(0, 0); this.e.fitCamera();
+  }
+
   frame() {
     if (this.mode === 'home') this.sync();
+    else if (this.mode === 'up') this.syncUp();
     this.updateActors();
     this.updateBubbles();
   }

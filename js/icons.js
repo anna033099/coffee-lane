@@ -1,5 +1,6 @@
 // 介面圖示（原創向量）：飲品、點心、料理、咖啡豆與各種按鈕
 import { RECIPES, SIDES, MEALS, ROASTS, INGS } from './data.js';
+import { dishIcon } from '../js3d/dishes.js';
 const OL = '#5a3a2a';
 const W = (size, inner, vb = '0 0 48 48') => `<svg viewBox="${vb}" width="${size}" height="${size}" aria-hidden="true">${inner}</svg>`;
 function shade(hex, amt) {
@@ -131,6 +132,7 @@ export const I = {
   tip: `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10.5" fill="#f2c24e" stroke="#a8752a" stroke-width="1.6"/><text x="12" y="17" text-anchor="middle" font-size="15" font-weight="900" fill="#a8752a" font-family="Georgia,serif">!</text></svg>`,
   broom: `<svg viewBox="0 0 24 24"><path d="M16,2 L11,13" stroke="#8a5a3c" stroke-width="2.2" stroke-linecap="round"/><path d="M8,12 L14,14 L12,22 Q8,22 4,19 Z" fill="#e2c27a" stroke="#8a6a2e" stroke-width="1.3" stroke-linejoin="round"/></svg>`,
   sparkle: `<svg viewBox="0 0 24 24"><path d="M12,2 L13.5,10.5 L22,12 L13.5,13.5 L12,22 L10.5,13.5 L2,12 L10.5,10.5 Z" fill="#fff6c9" stroke="#e2b84f" stroke-width="1.2"/></svg>`,
+  search: `<svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="#6b4a3a" stroke-width="2.4"/><path d="M15.5,15.5 L21,21" stroke="#6b4a3a" stroke-width="2.6" stroke-linecap="round"/></svg>`,
   star: `<svg viewBox="0 0 24 24"><path d="M12,2 l2.9,6 6.6,.9 -4.8,4.6 1.2,6.5 L12,16.9 6.1,20 7.3,13.5 2.5,8.9 9.1,8 Z" fill="#f2c24e" stroke="#a8752a" stroke-width="1.4" stroke-linejoin="round"/></svg>`,
   starOff: `<svg viewBox="0 0 24 24"><path d="M12,2 l2.9,6 6.6,.9 -4.8,4.6 1.2,6.5 L12,16.9 6.1,20 7.3,13.5 2.5,8.9 9.1,8 Z" fill="#e3d6c3" stroke="#c9b79e" stroke-width="1.4" stroke-linejoin="round"/></svg>`,
   close: `<svg viewBox="0 0 24 24"><path d="M6,6 L18,18 M18,6 L6,18" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/></svg>`,
@@ -158,12 +160,22 @@ export const BIG = {
   delivery: `<svg viewBox="0 0 64 64"><circle cx="16" cy="46" r="8" fill="#3b3b44" stroke="#1d1d22" stroke-width="2"/><circle cx="48" cy="46" r="8" fill="#3b3b44" stroke="#1d1d22" stroke-width="2"/><path d="M16,46 L28,30 L42,30 L48,46" stroke="#e8665a" stroke-width="5" fill="none" stroke-linecap="round"/><rect x="30" y="16" width="16" height="14" rx="2" fill="#f2c45e" stroke="#8a6a1e" stroke-width="2"/></svg>`,
   shop: `<svg viewBox="0 0 64 64"><path d="M10,24 L16,10 H48 L54,24 Z" fill="#e8665a" stroke="#7a2e26" stroke-width="2.2" stroke-linejoin="round"/><path d="M10,24 q5.5,7 11,0 q5.5,7 11,0 q5.5,7 11,0 q5.5,7 11,0" fill="#fffaf2" stroke="#7a2e26" stroke-width="2"/><rect x="13" y="28" width="38" height="26" fill="#fbf3e6" stroke="#7a2e26" stroke-width="2.2"/><rect x="27" y="38" width="10" height="16" fill="#a8714a" stroke="#6b4a3a" stroke-width="1.6"/></svg>`,
   rank: `<svg viewBox="0 0 64 64"><path d="M20,8 L44,8 L42,30 Q32,38 22,30 Z" fill="#f2c45e" stroke="#8a6a1e" stroke-width="2.2"/><rect x="28" y="36" width="8" height="10" fill="#c9a24a"/><rect x="18" y="46" width="28" height="8" rx="2" fill="#8a5a3c" stroke="#5a3a2a" stroke-width="2"/></svg>`,
+  season: `<svg viewBox="0 0 64 64"><path d="M20,6 L30,26 L24,30 L14,10 Z" fill="#4f8a78" stroke="#2c5a4c" stroke-width="2"/><path d="M44,6 L34,26 L40,30 L50,10 Z" fill="#e8665a" stroke="#7a2e26" stroke-width="2"/><circle cx="32" cy="40" r="16" fill="#f2c45e" stroke="#8a6a1e" stroke-width="2.4"/><circle cx="32" cy="40" r="11" fill="#f8da7e" stroke="#c9a24a" stroke-width="1.6"/><path d="M32,32 l2.6,5.2 5.7,.8 -4.1,4 1,5.7 -5.2,-2.7 -5.2,2.7 1,-5.7 -4.1,-4 5.7,-.8 Z" fill="#e8a63a"/></svg>`,
+  rating: `<svg viewBox="0 0 64 64"><path d="M32,6 l7.5,15.5 17,2.4 -12.3,12 2.9,16.9 -15.1,-8 -15.1,8 2.9,-16.9 -12.3,-12 17,-2.4 Z" fill="#f2c45e" stroke="#8a6a1e" stroke-width="2.6" stroke-linejoin="round"/><path d="M32,16 l4,8.3 9,1.3 -6.5,6.3 1.5,9 -8,-4.2 -8,4.2 1.5,-9 -6.5,-6.3 9,-1.3 Z" fill="#fbe39a"/><rect x="18" y="52" width="28" height="7" rx="3" fill="#c94a3a" stroke="#7a2e26" stroke-width="1.8"/></svg>`,
+  lottery: `<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="24" fill="#fffaf2" stroke="#5a3a2a" stroke-width="2.6"/><g stroke="#5a3a2a" stroke-width="1.4">${[0, 1, 2, 3, 4, 5, 6, 7].map(i => { const a1 = i / 8 * Math.PI * 2, a2 = (i + 1) / 8 * Math.PI * 2; return `<path d="M32,32 L${32 + 22 * Math.cos(a1)},${32 + 22 * Math.sin(a1)} A22,22 0 0 1 ${32 + 22 * Math.cos(a2)},${32 + 22 * Math.sin(a2)} Z" fill="${['#e8665a', '#f2c45e', '#6aa84f', '#7fb3c9', '#e8665a', '#f2c45e', '#6aa84f', '#c9a0e0'][i]}"/>`; }).join('')}</g><circle cx="32" cy="32" r="5" fill="#fffaf2" stroke="#5a3a2a" stroke-width="2"/><path d="M28,4 h8 l-4,9 Z" fill="#c94a3a" stroke="#5a3a2a" stroke-width="1.6"/></svg>`,
+  bank: `<svg viewBox="0 0 64 64"><rect x="10" y="26" width="44" height="30" rx="3" fill="#d9b88a" stroke="#6b4a3a" stroke-width="2.4"/><path d="M8,26 L32,12 L56,26 Z" fill="#c98a5a" stroke="#6b4a3a" stroke-width="2.4" stroke-linejoin="round"/><path d="M32,50 C20,42 22,32 28,32 C30,32 32,34 32,36 C32,34 34,32 36,32 C42,32 44,42 32,50 Z" fill="#e8665a" stroke="#7a2e26" stroke-width="2"/></svg>`,
+  upstairs: `<svg viewBox="0 0 64 64"><path d="M8,56 H20 V46 H30 V36 H40 V26 H50 V16 H58" fill="none" stroke="#6b4a3a" stroke-width="5" stroke-linejoin="round"/><path d="M8,56 H20 V46 H30 V36 H40 V26 H50 V16 H58 V58 H8 Z" fill="#d9b88a" opacity=".7"/><path d="M14,30 C6,24 8,16 13,16 C15,16 16,17 16,18 C16,17 17,16 19,16 C24,16 26,24 18,30 Z" fill="#e8a0b0" stroke="#b9506a" stroke-width="1.6"/><text x="44" y="12" font-size="11" font-weight="900" fill="#6b4a3a" font-family="Georgia,serif">2F</text></svg>`,
 };
 export function icon(name, cls = 'ic') { return `<span class="${cls}">${I[name] || ''}</span>`; }
+// 有 3D 擺盤小圖就用小圖，還沒拍好先用向量圖
+export function foodImg(kind, id, size = 40) {
+  const u = dishIcon(kind, id);
+  return u ? `<img class="dimg" src="${u}" width="${size}" height="${size}" alt="" draggable="false">` : null;
+}
 export function itemIcon(kind, id, size = 40) {
-  if (kind === 'drink') return drinkIcon(id, size);
-  if (kind === 'side') return sideIcon(id, size);
-  if (kind === 'meal') return mealIcon(id, size);
+  if (kind === 'drink') return foodImg('drink', id, size) || drinkIcon(id, size);
+  if (kind === 'side') return foodImg('side', id, size) || sideIcon(id, size);
+  if (kind === 'meal') return foodImg('meal', id, size) || mealIcon(id, size);
   if (kind === 'roast') return beanBagIcon(id, size);
   return '';
 }
@@ -186,4 +198,23 @@ const IG = {
   dutch: `<path d="M16,6 h16 l-4,14 h-8 Z" fill="#e6f6fa" stroke="#4a8fb0" stroke-width="2"/><path d="M24,22 v4" stroke="#2a160e" stroke-width="2.4"/><circle cx="24" cy="30" r="2" fill="#2a160e"/><path d="M14,34 h20 v8 h-20 Z" fill="#2a160e" stroke="${OL}" stroke-width="2"/>`,
   blend: `<path d="M14,10 h20 l-3,22 h-14 Z" fill="#e6f6fa" stroke="${OL}" stroke-width="2.2"/><rect x="12" y="32" width="24" height="10" rx="2" fill="#e8665a" stroke="${OL}" stroke-width="2"/><path d="M18,20 l12,4 M18,26 l12,-4" stroke="#4a8fb0" stroke-width="2" stroke-linecap="round"/>`,
 };
+const bottle = (body, cap, label) => `<path d="M19,16 h10 l2,24 h-14 Z" fill="${body}" stroke="${OL}" stroke-width="2.2" stroke-linejoin="round"/><rect x="21" y="8" width="6" height="8" fill="${cap}" stroke="${OL}" stroke-width="1.6"/><circle cx="24" cy="29" r="4.4" fill="#fffaf2"/><circle cx="24" cy="29" r="2" fill="${label}"/>`;
+const carton = (top, band) => `<path d="M16,14 L24,7 L32,14 L32,40 L16,40 Z" fill="#fffaf2" stroke="${OL}" stroke-width="2.2" stroke-linejoin="round"/><rect x="16" y="20" width="16" height="10" fill="${band}"/><path d="M16,14 L32,14" stroke="${top}" stroke-width="3"/>`;
+Object.assign(IG, {
+  honey: `<path d="M14,18 q0,-4 4,-4 h12 q4,0 4,4 v18 q0,6 -10,6 q-10,0 -10,-6 Z" fill="#e8a63a" stroke="${OL}" stroke-width="2.2"/><rect x="17" y="8" width="14" height="6" rx="2" fill="#c98a3a" stroke="${OL}" stroke-width="1.8"/><path d="M18,26 h12 M18,31 h12" stroke="#f6c86a" stroke-width="2"/>`,
+  blacktea: `<path d="M10,22 h24 v8 a12,10 0 0 1 -24,0 Z" fill="#fffaf2" stroke="${OL}" stroke-width="2.2"/><ellipse cx="22" cy="22" rx="12" ry="3" fill="#9a4a1a"/><path d="M34,24 q8,0 6,8 q-2,4 -6,2" fill="none" stroke="${OL}" stroke-width="2.2"/><rect x="26" y="6" width="7" height="8" rx="1" fill="#f6ecd6" stroke="${OL}" stroke-width="1.4"/><path d="M29,14 v8" stroke="${OL}" stroke-width="1.2"/>`,
+  hojicha: `<path d="M10,30 q14,12 28,0 Z" fill="#8a5a3a" stroke="${OL}" stroke-width="2.2"/><path d="M14,30 q10,-14 20,0" fill="#b9825a"/><path d="M20,10 q4,6 0,12 M28,10 q4,6 0,12" stroke="#b9aa98" stroke-width="2" fill="none" stroke-linecap="round"/>`,
+  lemon: `<ellipse cx="24" cy="25" rx="15" ry="11" fill="#f2d64a" stroke="${OL}" stroke-width="2.2"/><path d="M38,22 l5,-2 M9,28 l-4,2" stroke="${OL}" stroke-width="2.2" stroke-linecap="round"/><path d="M24,10 q6,-4 10,0 q-6,4 -10,0 Z" fill="#6aa84f" stroke="#2f5a22" stroke-width="1.4"/>`,
+  strawberry: `<path d="M24,42 C10,30 10,16 24,16 C38,16 38,30 24,42 Z" fill="#e0526a" stroke="${OL}" stroke-width="2.2"/><path d="M16,16 l8,-8 l8,8 l-4,-1 l-4,4 l-4,-4 Z" fill="#6aa84f" stroke="#2f5a22" stroke-width="1.4"/><g fill="#f6e27a"><circle cx="20" cy="24" r="1.2"/><circle cx="28" cy="24" r="1.2"/><circle cx="24" cy="30" r="1.2"/><circle cx="20" cy="33" r="1.2"/><circle cx="28" cy="33" r="1.2"/></g>`,
+  mango: `<path d="M12,30 C10,16 26,8 34,14 C42,20 38,38 24,40 C16,41 13,36 12,30 Z" fill="#f4b23a" stroke="${OL}" stroke-width="2.2"/><path d="M14,30 C14,20 24,14 30,16" stroke="#f9d27a" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M33,13 q4,-6 8,-4" stroke="#2f5a22" stroke-width="2.2" fill="none"/>`,
+  orange: carton('#f39a2e', '#f39a2e'),
+  mint: `<path d="M24,40 V18" stroke="#2f5a22" stroke-width="2.2"/><path d="M24,22 C14,22 10,14 14,8 C20,8 24,14 24,22 Z" fill="#5aa86a" stroke="#2f5a22" stroke-width="1.8"/><path d="M24,30 C34,30 38,22 34,16 C28,16 24,22 24,30 Z" fill="#6ab87a" stroke="#2f5a22" stroke-width="1.8"/>`,
+  soda: `<path d="M17,10 h14 l2,6 v24 q0,3 -3,3 h-12 q-3,0 -3,-3 v-24 Z" fill="#d9eef2" stroke="#2f6a86" stroke-width="2.2"/><rect x="19" y="5" width="10" height="5" rx="1" fill="#4a8fb0" stroke="${OL}" stroke-width="1.4"/><g fill="#fff"><circle cx="22" cy="34" r="1.6"/><circle cx="27" cy="28" r="1.4"/><circle cx="23" cy="23" r="1.2"/></g>`,
+  hazelnut: bottle('#b07a4a', '#5a3a24', '#7a4a2a'),
+  rose: bottle('#e79ab0', '#b9506a', '#e06a8a'),
+  brownsugar: `<path d="M12,22 h24 l-3,18 h-18 Z" fill="#fffaf2" stroke="${OL}" stroke-width="2.2"/><path d="M14,22 q10,-10 20,0 Z" fill="#5a2e1a" stroke="${OL}" stroke-width="1.8"/><rect x="20" y="10" width="6" height="6" rx="1" fill="#7a3e22" stroke="${OL}" stroke-width="1.4" transform="rotate(15 23 13)"/>`,
+  seasalt: `<path d="M12,34 q-2,-10 6,-10 q0,-8 8,-8 q8,0 8,8 q8,0 6,10 Z" fill="#f6f4ee" stroke="#4a8fb0" stroke-width="2.2"/><g fill="#7fb3c9"><circle cx="19" cy="28" r="1.4"/><circle cx="26" cy="24" r="1.4"/><circle cx="30" cy="30" r="1.4"/></g>`,
+  oat: carton('#c9a46a', '#d9c08a'),
+  coconut: `<circle cx="24" cy="26" r="14" fill="#7a4a2a" stroke="${OL}" stroke-width="2.2"/><path d="M14,22 a12,10 0 0 1 20,0 Z" fill="#fbf8ef" stroke="${OL}" stroke-width="1.6"/><circle cx="20" cy="30" r="1.8" fill="#3a2214"/><circle cx="28" cy="30" r="1.8" fill="#3a2214"/>`,
+});
 export function ingIcon(id, size = 40) { return W(size, IG[id] || ''); }

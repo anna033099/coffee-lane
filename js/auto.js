@@ -1,6 +1,7 @@
 // 自動經營：每一項都可以分開開關，離線時也照設定執行
 import * as D from './data.js';
 import { now } from './state.js';
+import * as X from './extra.js';
 
 export class Auto {
   constructor(game, hooks = {}) {
@@ -11,7 +12,8 @@ export class Auto {
     this.lastNeighbors = 0;
   }
   get a() { return this.g.s.auto; }
-  on(k) { return this.a.master && this.a[k]; }
+  owned(k) { return !!(this.g.s.autoOwned && this.g.s.autoOwned[k]); }
+  on(k) { return this.a.master && this.a[k] && this.owned(k); }
   // 離線時會不會處理這台機器（用來判斷燒焦算不算損失）
   wants(m) {
     const k = this.g.mdef(m).kind;
@@ -51,12 +53,12 @@ export class Auto {
     for (const m of s.machines) {
       const kind = g.mdef(m).kind;
       const st = g.status(m, t);
-      if (kind === 'roaster' && this.a.roast) {
+      if (kind === 'roaster' && this.on('roast')) {
         if (st.st === 'done' || st.st === 'burnt') g.collect(m, t, true);
         if (!m.job && s.beans < this.beanTarget()) { const r = this.roastChoice(m); if (r && s.gold - r.cost >= this.reserve()) g.startRoast(m, r.id, t, true); }
-      } else if (kind === 'espresso' && this.a.brew) {
+      } else if (kind === 'espresso' && this.on('brew')) {
         if (!m.job) { const id = this.brewChoice(m); if (id) g.startBrew(m, id, t, true); }
-      } else if (kind === 'side' && this.a.side) {
+      } else if (kind === 'side' && this.on('side')) {
         if (st.st === 'done' || st.st === 'burnt') g.collect(m, t, true);
         if (!m.job) {
           const mac = g.mdef(m).machine;
@@ -64,7 +66,7 @@ export class Auto {
           if (!id) { const l = D.SIDE_ORDER.filter(k => D.SIDES[k].machine === mac && g.unlocked(D.SIDES[k].lv)); id = l[l.length - 1]; }
           if (id && g.showcaseCount() < D.SHOWCASE_CAP - 4 && s.gold - D.SIDES[id].cost >= this.reserve()) g.startSide(m, id, t, true);
         }
-      } else if (kind === 'kitchen' && this.a.meal) {
+      } else if (kind === 'kitchen' && this.on('meal')) {
         if (st.st === 'done' || st.st === 'burnt') g.collect(m, t, true);
         if (!m.job) {
           const mac = g.mdef(m).machine;
@@ -76,13 +78,13 @@ export class Auto {
       }
     }
     // 員工打氣
-    if (this.a.cheer) {
+    if (this.on('cheer')) {
       for (const st of s.staff) {
         if (st.energy < g.maxEnergy(st) * (this.a.cheerAt || 25) / 100 && g.dragsLeft(t) > 0) g.cheer(st, t, true);
       }
     }
     // 店內事件（只在畫面上有客人時）
-    if (this.a.events && !offline && t - this.lastEvents > 2.5) {
+    if (this.on('events') && !offline && t - this.lastEvents > 2.5) {
       this.lastEvents = t;
       const c = g.customers.find(q => q.event === 'sleep' || q.event === 'tip');
       if (c) g.tapCustomer(c.id);
@@ -90,7 +92,7 @@ export class Auto {
       else if (s.dirtyTables.length) g.cleanTable(s.dirtyTables[0]);
     }
     // 鄰居
-    if (this.a.neighbors && t - this.lastNeighbors > (offline ? 600 : 20)) {
+    if (this.on('neighbors') && t - this.lastNeighbors > (offline ? 600 : 20)) {
       this.lastNeighbors = t;
       for (const id of D.NEIGHBOR_ORDER) {
         while (g.helpsLeft(id) > 0) g.help(id);
@@ -100,7 +102,7 @@ export class Auto {
       while (s.clovers >= D.CLOVER_BOX) g.openCloverBox();
     }
     // 招攬（每 5 分鐘一次，會用掉傳單；成功率 60%）
-    if (this.a.recruit && t - this.lastRecruit > 300 && s.flyers > 0) {
+    if (this.on('recruit') && t - this.lastRecruit > 300 && s.flyers > 0) {
       this.lastRecruit = t;
       if (s.flyers >= D.FLYER_MAX) s.flyerT = t;
       s.flyers--; s.stats.recruitTry++;
@@ -110,7 +112,7 @@ export class Auto {
       this.h.onRecruit(res, fake);
     }
     // 常客特別訂單（評價固定 Good）
-    if (this.a.special) {
+    if (this.on('special')) {
       if (s.pendingSpecial) {
         const c = g.customers.find(q => q.id === s.pendingSpecial.cid);
         if (!c || c.eventT > 3) g.finishSpecial(s.pendingSpecial.recipe, 'good');
@@ -124,8 +126,10 @@ export class Auto {
       }
     }
     // 店貓
-    if (this.a.cat && s.cat && s.cat.hunger < 4 && s.gold >= 80 + this.reserve()) { s.gold -= 80; s.cat.hunger = 10; s.cat.love = Math.min(100, (s.cat.love || 0) + 2); }
+    if (this.on('cat') && s.cat && s.cat.hunger < 4 && s.gold >= 80 + this.reserve()) { s.gold -= 80; s.cat.hunger = 10; s.cat.love = Math.min(100, (s.cat.love || 0) + 2); }
+    // 外送
+    if (this.on('delivery')) { X.deliveryTick(g, t); s.delivery.orders.forEach((o, i) => { if (X.canDeliver(g, o)) X.deliver(g, i); }); }
     // 任務獎勵
-    if (this.a.quests) this.h.quests();
+    if (this.on('quests')) this.h.quests();
   }
 }

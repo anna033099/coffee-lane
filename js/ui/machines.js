@@ -1,7 +1,7 @@
 // 機器面板：烘豆、沖煮、點心、料理、購買吧台機器
 import { h, modal, ic, fmt, fmtTime, toast, price } from './core.js';
 import * as D from '../data.js';
-import { I, drinkIcon, sideIcon, mealIcon, beanBagIcon } from '../icons.js';
+import { I, drinkIcon, sideIcon, mealIcon, beanBagIcon, itemIcon } from '../icons.js';
 import { openBarista, GRADE_ZH } from './barista.js';
 import { now } from '../state.js';
 import { sfx } from '../audio.js';
@@ -37,7 +37,7 @@ function openRunning(ui, m) {
       const st = g.status(m);
       if (!m.job || (st.st !== 'run' && st.st !== 'sell')) { mm.close(true); return; }
       const j = m.job;
-      const art = j.kind === 'roast' ? beanBagIcon(j.item, 90) : j.kind === 'brew' ? drinkIcon(j.item, 90) : j.kind === 'side' ? sideIcon(j.item, 90) : mealIcon(j.item, 90);
+      const art = j.kind === 'roast' ? beanBagIcon(j.item, 90) : j.kind === 'brew' ? itemIcon('drink', j.item, 90) : j.kind === 'side' ? itemIcon('side', j.item, 90) : itemIcon('meal', j.item, 90);
       const name = j.kind === 'roast' ? D.ROASTS.find(r => r.id === j.item).name : j.kind === 'brew' ? D.RECIPES[j.item].name : j.kind === 'side' ? D.SIDES[j.item].name : D.MEALS[j.item].name;
       const row = h('div', { class: 'row', style: 'gap:1.2rem;align-items:center' }, h('div', { style: 'width:6rem;height:6rem', html: art }));
       const info = h('div', { style: 'flex:1' }, h('h3', { text: name }));
@@ -129,7 +129,7 @@ function openBrewer(ui, m) {
           testReady(g, id) ? h('button', { class: 'btn blue sm', onclick: () => testRecipe(ui, id) }, '評比') : null,
           h('button', { class: 'btn go', disabled: s.beans < r.beans, onclick: () => { if (g.startBrew(m, id)) { ui.closeTop(); ui.refresh(); } } }, '沖煮 ', ic('bean'), r.beans));
         grid.appendChild(card({
-          art: drinkIcon(id, 80), title: r.name, locked: lvLock, stars: rs.trained ? rs.stars : undefined, tag: '×' + g.brewCups(m, id), tl: testReady(g, id) ? '可評比' : null,
+          art: itemIcon('drink', id, 80), title: r.name, locked: lvLock, stars: rs.trained ? rs.stars : undefined, tag: '×' + g.brewCups(m, id), tl: testReady(g, id) ? '可評比' : null,
           meta: [h('span', {}, ic('gold'), g.price(id)), h('span', {}, ic('clock'), fmtTime(Math.round(r.prep * (g.mdef(m).speedMul || 1))))],
           foot,
         }));
@@ -150,7 +150,7 @@ function openSide(ui, m) {
       for (const id of D.SIDE_ORDER.filter(k => D.SIDES[k].machine === mac)) {
         const r = D.SIDES[id], lock = s.level < r.lv;
         grid.appendChild(card({
-          art: sideIcon(id, 80), title: r.name, locked: lock, tag: '×' + r.pcs, sel: m.auto.item === id,
+          art: itemIcon('side', id, 80), title: r.name, locked: lock, tag: '×' + r.pcs, sel: m.auto.item === id,
           meta: [h('span', {}, ic('gold'), r.price + '/份'), h('span', {}, ic('clock'), fmtTime(r.time))],
           foot: lock ? lockLine(`Lv${r.lv} 解鎖`) : h('button', { class: 'btn go', disabled: s.gold < r.cost, onclick: () => { if (g.startSide(m, id)) { ui.closeTop(); ui.refresh(); } } }, '製作 ', ic('gold'), fmt(r.cost)),
         }));
@@ -180,7 +180,7 @@ function openKitchen(ui, m) {
         const r = D.MEALS[id], lock = s.level < r.lv;
         const cost = g.mealCost(id, tl), mult = g.mealMult(tl);
         grid.appendChild(card({
-          art: mealIcon(id, 80), title: r.name, locked: lock, tag: '×' + r.pcs, sel: m.auto.item === id,
+          art: itemIcon('meal', id, 80), title: r.name, locked: lock, tag: '×' + r.pcs, sel: m.auto.item === id,
           meta: [h('span', {}, ic('gold'), Math.round(r.price * mult) + '/份'), h('span', {}, ic('clock'), fmtTime(r.time))],
           foot: lock ? lockLine(`Lv${r.lv} 解鎖`) : h('button', { class: 'btn go', disabled: s.gold < cost, onclick: () => { if (g.startMeal(m, id, tl)) { ui.closeTop(); ui.refresh(); } } }, '料理 ', ic('gold'), fmt(cost)),
         }));
@@ -191,20 +191,25 @@ function openKitchen(ui, m) {
   });
 }
 
-export function openMachineShop(ui, slot) {
+export function openMachineShop(ui, slot, tab) {
   const g = ui.g, s = g.s;
+  const up = slot >= 100;
+  const KIND_ZH = { roaster: '烘豆', espresso: '咖啡', side: '點心', kitchen: '料理' };
   modal({
-    ribbon: 'Machine', title: slot ? `吧台第 ${slot} 格` : '購買吧台設備', live: true, wide: true,
-    render: body => {
-      body.appendChild(h('p', { class: 'lead', text: `吧台共有 ${g.slots} 個位置（第 0 格固定放磨豆機）。擴店可以增加吧台長度。` }));
+    ribbon: 'Machine', title: up ? `2 樓甜點吧第 ${slot - 99} 格` : slot ? `吧台第 ${slot} 格` : '購買吧台設備', live: true, wide: true,
+    tab: up ? 'side' : tab || 'roaster', tabs: up ? null : () => Object.entries(KIND_ZH).map(([k, v]) => [k, v]),
+    render: (body, m) => {
+      body.appendChild(h('p', { class: 'lead', text: up ? '2 樓只能擺甜點機器，不佔一樓吧台的數量上限。' : `吧台共有 ${g.slots} 個位置（第 0 格固定放磨豆機）。每類機器的數量上限會隨等級提高，擴店可以增加吧台長度。` }));
       const grid = h('div', { class: 'cards' });
-      for (const [id, d] of Object.entries(D.BAR_MACHINES)) {
+      for (const [id, d] of Object.entries(D.BAR_MACHINES).filter(([, d]) => d.kind === m.tab).sort((a, b) => a[1].lv - b[1].lv)) {
         const lock = s.level < d.lv;
         const count = g.machineCount(d.kind), cap = D.machineCap(d.kind, s.level);
+        const full = !up && count >= cap;
+        const makes = d.kind === 'side' ? D.SIDE_ORDER.filter(k => D.SIDES[k].machine === d.machine).length : d.kind === 'kitchen' ? D.MEAL_ORDER.filter(k => D.MEALS[k].machine === d.machine).length : 0;
         const c = card({
-          art: '', title: d.name, locked: lock, tag: `${count}/${cap}`,
-          meta: [h('span', { text: { roaster: '烘豆', espresso: '咖啡', side: '點心', kitchen: '料理' }[d.kind] })],
-          foot: lock ? lockLine(`Lv${d.lv} 解鎖`) : h('button', { class: 'btn go', disabled: count >= cap || s.gold < d.cost, onclick: () => { if (g.buyMachine(id, slot && !g.machineAt(slot) ? slot : 0)) { toast(`${d.name}放上吧台了`, 'good'); ui.closeTop(); ui.refresh(); } } }, d.cost ? '購買 ' : '免費', d.cost ? ic('gold') : null, d.cost ? fmt(d.cost) : null),
+          art: '', title: d.name, locked: lock, tag: up ? '' : `${count}/${cap}`,
+          meta: [h('span', { text: KIND_ZH[d.kind] + (makes ? `・${makes} 道菜` : '') })],
+          foot: lock ? lockLine(`Lv${d.lv} 解鎖`) : h('button', { class: 'btn go', disabled: full || s.gold < d.cost, onclick: () => { if (g.buyMachine(id, slot && !g.machineAt(slot) ? slot : (up ? g.freeSlot(true) : 0))) { toast(`${d.name}放上吧台了`, 'good'); ui.closeTop(); ui.refresh(); } } }, d.cost ? '購買 ' : '免費', d.cost ? ic('gold') : null, d.cost ? fmt(d.cost) : null),
         });
         ui.machineArt(id).then(src => { const a = c.querySelector('.art'); if (src && a) a.innerHTML = `<img src="${src}" alt="" style="width:80%;height:90%;object-fit:contain">`; });
         grid.appendChild(c);

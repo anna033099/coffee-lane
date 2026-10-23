@@ -2,7 +2,7 @@
 import { h, ic, fmt, fmtTime, toast, modal, initCore, closeAll, topModal, anyModal, refreshLive, rewardChips } from './core.js';
 import { initTalk, talk } from './talk.js';
 import * as D from '../data.js';
-import { I, BIG, drinkIcon } from '../icons.js';
+import { I, BIG, drinkIcon, itemIcon } from '../icons.js';
 import { portraitSVG, fullSVG } from '../chara.js';
 import { resolveLook } from '../sim.js';
 import { openMachine, openMachineShop } from './machines.js';
@@ -17,13 +17,10 @@ import * as T from '../../js3d/tex.js';
 import { now } from '../state.js';
 import { openTruck } from './truck.js';
 import { openCat } from './cat.js';
+import * as XU from './extra.js';
+import * as X from '../extra.js';
 
-const MACHINE_MAKE = {
-  roaster_classic: () => MD.roaster(0), roaster_forest: () => MD.roaster(1), roaster_navy: () => MD.roaster(2),
-  espresso_steel: () => MD.espressoMachine(0), espresso_cream: () => MD.espressoMachine(1), espresso_green: () => MD.espressoMachine(2),
-  toaster: () => MD.toaster(), oven: () => MD.oven(0), fridge: () => MD.dessertFridge(), waffle: () => MD.waffleIron(), bench: () => MD.pastryBench(),
-  griddle: () => MD.griddle(), stove: () => MD.pastaStove(), press: () => MD.paniniPress(), pizza: () => MD.pizzaOven(),
-};
+const MACHINE_MAKE = MD.MACHINE_BUILDERS;
 
 export class UI {
   constructor(game, world, auto, root) {
@@ -56,13 +53,14 @@ export class UI {
     this.money = h('div', { class: 'money' });
     this.stat = h('div', { class: 'statbar' });
     this.qcol = h('div', { class: 'qcol' });
+    this.ecol = h('div', { class: 'ecol' });
     this.rcol = h('div', { class: 'rcol' });
     this.bcol = h('div', { class: 'bcol' });
     const house = h('button', { class: 'house plate', onclick: () => { sfx('click'); this.decor.enter(); } }, h('span', { class: 'bi', html: BIG.decor }), h('span', { text: '裝潢' }));
     const zoom = h('div', { class: 'zoombox' },
       h('button', { class: 'rbtn plate', 'aria-label': '放大', html: I.plus, onclick: () => this.world.engine.setZoom(this.world.engine.zoom * 1.25) }),
       h('button', { class: 'rbtn plate', 'aria-label': '縮小', html: I.minus, onclick: () => this.world.engine.setZoom(this.world.engine.zoom / 1.25) }));
-    hud.append(this.prof, this.stat, this.money, this.qcol, this.rcol, this.bcol, house, zoom);
+    hud.append(h('div', { class: 'lcol' }, this.prof, this.qcol, this.ecol), this.stat, this.money, this.rcol, this.bcol, house, zoom);
     this.root.appendChild(hud);
     // 底部按鈕
     const bb = (k, label, fn) => { const b = h('button', { class: 'bbtn plate', onclick: () => { sfx('click'); fn(); } }, h('span', { class: 'bi', html: BIG[k] }), h('span', { text: label })); this.bcol.appendChild(b); return b; };
@@ -73,12 +71,38 @@ export class UI {
     this.bQuest = bb('quest', '任務', () => P.openQuests(this));
     // 右側按鈕
     const sb = (k, label, fn) => { const b = h('button', { class: 'sbtn plate', onclick: () => { sfx('click'); fn(); } }, h('span', { class: 'bi', html: BIG[k] }), h('span', { text: label })); this.rcol.appendChild(b); return b; };
-    this.sAuto = sb('auto', '自動經營', () => P.openAuto(this));
+    this.sAuto = sb('auto', '自動經營', () => { if (this.g.s.level < D.AUTO_PANEL_LV) return toast(`Lv${D.AUTO_PANEL_LV} 開放自動經營小幫手`, 'warn'); P.openAuto(this); });
     this.sFriends = sb('friends', '鄰居', () => P.openNeighbors(this));
     this.sReg = sb('regulars', '常客簿', () => P.openRegulars(this));
     this.sTruck = sb('truck', '咖啡車', () => { if (this.g.s.level < D.TRUCK_LV) return toast(`Lv${D.TRUCK_LV} 開放咖啡車`, 'warn'); openTruck(this); });
     this.sExp = sb('shop', '擴店', () => P.openExpand(this));
     this.sCat = sb('cat', '店貓', () => { if (this.g.s.level < D.CAT_LV) return toast(`Lv${D.CAT_LV} 可以養店貓`, 'warn'); openCat(this); });
+    // 左側活動按鈕
+    const eb = (k, label, lv, fn) => { const b = h('button', { class: 'ebtn', onclick: () => { sfx('click'); if (this.g.s.level < lv) return toast(`Lv${lv} 開放${label}`, 'warn'); fn(); } }, h('span', { class: 'bi', html: BIG[k] }), h('span', { class: 'el', text: label })); b.dataset.lv = lv; this.ecol.appendChild(b); return b; };
+    this.eDelivery = eb('delivery', '外送', X.LV.delivery, () => XU.openDelivery(this));
+    this.eSeason = eb('season', '賽季', X.LV.weekly, () => XU.openSeason(this));
+    this.eRating = eb('rating', '評鑑', X.LV.rating, () => XU.openRating(this));
+    this.eLottery = eb('lottery', '轉盤', X.LV.lottery, () => XU.openLottery(this));
+    this.eBank = eb('bank', '食物銀行', X.LV.bank, () => XU.openBank(this));
+    this.eUp = eb('upstairs', '2 樓', X.LV.floor2, () => XU.openFloor2(this));
+    this.refresh(true);
+  }
+  // ---------- 2 樓 ----------
+  goUpstairs() {
+    this.closeAll();
+    this.world.enterUpstairs();
+    this.hud.hidden = true;
+    this.upBar = h('div', { class: 'plate upbar' },
+      h('span', { class: 'bi', html: BIG.upstairs }),
+      h('div', {}, h('b', { text: '2 樓甜點區' }), h('div', { class: 'muted small', text: '點吧台的空位擺甜點機器；做好的甜點會送到一樓甜點櫃。' })),
+      h('button', { class: 'btn go', onclick: () => this.goDownstairs() }, '回到一樓'));
+    this.root.appendChild(this.upBar);
+  }
+  goDownstairs() {
+    this.closeAll();
+    this.world.exitUpstairs();
+    if (this.upBar) { this.upBar.remove(); this.upBar = null; }
+    this.hud.hidden = false;
     this.refresh(true);
   }
   badge(el, n) {
@@ -134,9 +158,13 @@ export class UI {
     // 徽章
     const pendClover = D.NEIGHBOR_ORDER.reduce((a, id) => a + g.cloversPending(id), 0);
     const helps = D.NEIGHBOR_ORDER.reduce((a, id) => a + g.helpsLeft(id), 0);
-    set('badges', [pendClover, helps, s.clovers >= D.CLOVER_BOX, s.auto.master && Object.keys(s.auto).some(k => s.auto[k] === true && k !== 'master'), D.RECIPE_ORDER.filter(id => g.recipeOpen(id) && !s.recipes[id].trained).length, g.exhaustedCount(), s.level].join('|'), () => {
+    set('badges', [pendClover, helps, s.clovers >= D.CLOVER_BOX, JSON.stringify(s.autoOwned), s.auto.master, Object.keys(D.AUTO_UNLOCK).filter(k => s.auto[k]).join(), Math.floor(s.gold / 500), s.coupons, D.RECIPE_ORDER.filter(id => g.recipeOpen(id) && !s.recipes[id].trained).length, g.exhaustedCount(), s.level].join('|'), () => {
       this.badge(this.sFriends, pendClover || (s.clovers >= D.CLOVER_BOX ? true : helps ? helps : 0));
-      this.sAuto.classList.toggle('on', s.auto.master && ['roast', 'brew', 'side', 'meal', 'cheer', 'events', 'neighbors', 'quests', 'recruit', 'special', 'cat'].some(k => s.auto[k]));
+      const own = s.autoOwned || {};
+      this.sAuto.classList.toggle('on', s.auto.master && Object.keys(D.AUTO_UNLOCK).some(k => own[k] && s.auto[k]));
+      this.sAuto.classList.toggle('locked', s.level < D.AUTO_PANEL_LV);
+      const buyable = Object.entries(D.AUTO_UNLOCK).filter(([k, u]) => !own[k] && s.level >= u.lv && (u.coupon ? s.coupons >= u.coupon : s.gold >= u.gold)).length;
+      this.badge(this.sAuto, buyable);
       this.badge(this.bMenu, D.RECIPE_ORDER.filter(id => g.recipeOpen(id) && !s.recipes[id].trained).length);
       this.badge(this.bStaff, g.exhaustedCount());
       this.sTruck.classList.toggle('locked', s.level < D.TRUCK_LV);
@@ -144,8 +172,16 @@ export class UI {
       const nx = g.nextExpansion();
       this.badge(this.sExp, nx && s.level >= nx.lv && g.score() >= nx.score && s.gold >= nx.cost ? true : 0);
     });
+    const xb = X.extraBadges(g);
+    set('xbadges', JSON.stringify(xb) + s.level, () => {
+      this.badge(this.eDelivery, xb.delivery); this.badge(this.eSeason, xb.weekly); this.badge(this.eRating, xb.rating ? true : 0);
+      this.badge(this.eLottery, xb.lottery); this.badge(this.eBank, xb.bank ? true : 0);
+      for (const b of this.ecol.children) b.classList.toggle('locked', s.level < +b.dataset.lv);
+      this.badge(this.eUp, !s.floor2.open && s.level >= X.LV.floor2 && s.gold >= X.FLOOR2_COST ? true : 0);
+    });
     refreshLive(g.version + '|' + Math.floor(s.gold) + '|' + s.beans);
   }
+  openRecipes(tab) { P.openRecipes(this, tab); }
   closeTop() { const m = topModal(); if (m) m.close(); }
   closeAll() { closeAll(); }
   rerenderTop() { const m = topModal(); if (m) m.rerender(); }
@@ -164,6 +200,7 @@ export class UI {
     unlockAudio();
     const g = this.g;
     if (this.world.mode === 'visit') { if (hit.type === 'help') this.doHelp(hit.id); return; }
+    if (this.world.mode === 'up') { if (anyModal()) return; if (hit.type === 'machine') openMachine(this, hit.slot); else if (hit.type === 'emptyslot') openMachineShop(this, hit.slot); return; }
     if (anyModal() || this.busyTalk) return;
     switch (hit.type) {
       case 'machine': openMachine(this, hit.slot); break;
@@ -177,6 +214,7 @@ export class UI {
       }
       case 'owner': P.openWardrobe(this, 'owner'); break;
       case 'passer': this.recruit(hit.id); break;
+      case 'hint': toast('點吧台上的咖啡機煮一批飲品，收成後就會上架', 'warn'); break;
       case 'furniture': {
         if (g.s.messyChairs.includes(hit.id)) g.fixChair(hit.id);
         else if (g.s.dirtyTables.includes(hit.id)) g.cleanTable(hit.id);
@@ -231,7 +269,7 @@ export class UI {
       render: body => {
         body.appendChild(h('p', { class: 'lead', text: '猜猜他想要哪一杯？選好之後要親手做。' }));
         const grid = h('div', { class: 'cards sm' });
-        for (const id of opts) grid.appendChild(h('button', { class: 'tcard', onclick: () => { m.close(true); this.makeSpecial(id); } }, h('b', { text: D.RECIPES[id].name }), h('div', { class: 'art', html: drinkIcon(id, 70) })));
+        for (const id of opts) grid.appendChild(h('button', { class: 'tcard', onclick: () => { m.close(true); this.makeSpecial(id); } }, h('b', { text: D.RECIPES[id].name }), h('div', { class: 'art', html: itemIcon('drink', id, 70) })));
         body.appendChild(grid);
       },
     });

@@ -1,66 +1,131 @@
 // 各種面板：菜單與器具、員工、換裝、常客、鄰居、自動經營、任務、設定、擴店、升級、離線報告
 import { h, modal, ic, fmt, fmtTime, toast, rewardChips, confirmBox } from './core.js';
 import * as D from '../data.js';
-import { I, drinkIcon, sideIcon, mealIcon } from '../icons.js';
+import { I, itemIcon, ingIcon } from '../icons.js';
 import { fullSVG, portraitSVG } from '../chara.js';
 import { resolveLook } from '../sim.js';
-import { trainRecipe, testRecipe, testReady } from './machines.js';
+import { trainRecipe, testRecipe, testReady, openMachineShop } from './machines.js';
+import { dishPhoto } from '../../js3d/dishes.js';
 import { currentQuest, claimQuest, ensureDaily, dailyProgress, claimDaily, claimDailyBonus, NPCS } from '../quests.js';
 import { exportCode, importCode, save, clearSave, blockSaves, now } from '../state.js';
 import { setSound, setMusic, sfx } from '../audio.js';
 
-// ---------------- 菜單（飲品、點心、料理、器具） ----------------
-export function openRecipes(ui, tab = 'drink') {
+// ---------------- 食譜書（飲品、甜點、正餐、器具） ----------------
+const CAT = { drink: ['飲品', '飲'], side: ['甜點', '甜'], meal: ['正餐', '餐'] };
+const TAG_ZH = { strong: '濃郁', hot: '熱飲', iced: '冰飲', milk: '奶香', sweet: '香甜', mild: '順口', black: '黑咖啡', cheap: '平價', classic: '經典' };
+function recipeInfo(g, kind, id) {
+  const s = g.s;
+  const it = kind === 'drink' ? D.RECIPES[id] : kind === 'side' ? D.SIDES[id] : D.MEALS[id];
+  const lvOk = s.level >= it.lv;
+  let got, need = null;
+  if (kind === 'drink') { got = s.recipes[id].trained; if (!s.tools[it.tool]) need = D.TOOLS[it.tool].name; }
+  else {
+    got = (s.cooked[id] || 0) > 0;
+    const mname = kind === 'side' ? D.SIDE_MACHINES[it.machine].name : D.KITCHEN_MACHINES[it.machine].name;
+    if (!s.machines.some(m => g.mdef(m).machine === it.machine)) need = mname;
+  }
+  const isNew = lvOk && !got && !s.seenRecipes[kind + ':' + id];
+  return { it, lvOk, got, need, isNew };
+}
+export function openRecipes(ui, tab = 'all') {
+  const g = ui.g, s = g.s;
+  if (!s.seenRecipes) s.seenRecipes = {};
+  const ALL = [...D.RECIPE_ORDER.map(id => ['drink', id]), ...D.SIDE_ORDER.map(id => ['side', id]), ...D.MEAL_ORDER.map(id => ['meal', id])];
+  const lvOf = ([k, id]) => (k === 'drink' ? D.RECIPES[id] : k === 'side' ? D.SIDES[id] : D.MEALS[id]).lv;
+  modal({
+    ribbon: 'Recipes', title: '食譜書', wide: true, cls: 'm-book', tab,
+    tabs: () => [['all', '全部'], ['drink', '飲品', D.RECIPE_ORDER.some(id => testReady(g, id) || (g.recipeOpen(id) && !s.recipes[id].trained))], ['side', '甜點'], ['meal', '正餐'], ['tools', '器具', Object.entries(D.TOOLS).some(([k, t]) => !s.tools[k] && s.level >= t.lv && s.gold >= t.cost)]],
+    render: (body, m) => {
+      if (m.tab === 'tools') return renderTools(ui, body);
+      const d = m.data;
+      const list = ALL.filter(([k]) => m.tab === 'all' || m.tab === k).sort((a, b) => lvOf(a) - lvOf(b));
+      const gotN = list.filter(([k, id]) => recipeInfo(g, k, id).got).length;
+      const search = h('label', { class: 'bk-search' }, h('span', { class: 'ic', html: I.search || '' }), h('input', { type: 'search', placeholder: '搜尋菜名', value: d.q || '', oninput: ev => { d.q = ev.target.value.trim(); fill(); } }));
+      const gotBtn = h('button', { class: 'bk-got' + (d.got ? ' on' : ''), onclick: ev => { d.got = !d.got; ev.currentTarget.classList.toggle('on', d.got); fill(); } }, h('i'), '只看已獲得');
+      body.appendChild(h('div', { class: 'bk-bar' }, search, h('span', { class: 'bk-count', text: `已獲得 ${gotN} / ${list.length}` }), gotBtn));
+      const grid = h('div', { class: 'bk-grid' });
+      body.appendChild(grid);
+      const io = 'IntersectionObserver' in window ? new IntersectionObserver(ents => { for (const e of ents) if (e.isIntersecting) { io.unobserve(e.target); loadPhoto(e.target); } }, { root: body, rootMargin: '200px' }) : null;
+      function loadPhoto(el) { dishPhoto(el.dataset.k, el.dataset.id).then(u => { if (u) { el.src = u; el.classList.add('ok'); } }); }
+      function fill() {
+        grid.innerHTML = '';
+        const q = (d.q || '').toLowerCase();
+        let n = 0;
+        for (const [k, id] of list) {
+          const inf = recipeInfo(g, k, id);
+          if (d.got && !inf.got) continue;
+          if (q && !(inf.it.name.toLowerCase().includes(q) || (inf.it.en || '').toLowerCase().includes(q))) continue;
+          n++;
+          const img = h('img', { alt: inf.it.name, 'data-k': k, 'data-id': id, draggable: 'false' });
+          const photo = h('div', { class: 'bk-photo' }, img,
+            inf.isNew ? h('span', { class: 'bk-new', text: 'NEW' }) : null,
+            !inf.lvOk ? h('span', { class: 'bk-lock', html: I.lock + `<span>Lv ${inf.it.lv}</span>` }) : null,
+            k === 'drink' && inf.got ? h('span', { class: 'bk-stars', html: [0, 1, 2].map(i => i < s.recipes[id].stars ? I.star : I.starOff).join('') }) : null,
+            inf.lvOk && !inf.got ? h('span', { class: 'bk-tag', text: k === 'drink' ? (inf.need ? '缺器具' : '未學會') : (inf.need ? '缺機器' : '未做過') }) : null);
+          const card = h('button', { class: 'bk-card' + (inf.lvOk ? '' : ' locked') + (inf.got ? ' got' : ''), onclick: () => { s.seenRecipes[k + ':' + id] = 1; openRecipeDetail(ui, k, id, () => m.rerender()); } },
+            photo, h('div', { class: 'bk-name' }, h('b', { text: inf.it.name }), h('span', { class: 'bk-cat c-' + k, text: CAT[k][1] })));
+          grid.appendChild(card);
+          if (io) io.observe(img); else loadPhoto(img);
+        }
+        if (!n) grid.appendChild(h('p', { class: 'muted center', style: 'grid-column:1/-1;padding:2rem', text: '找不到符合的菜色' }));
+      }
+      fill();
+    },
+  });
+}
+function renderTools(ui, body) {
+  const g = ui.g, s = g.s;
+  body.appendChild(h('p', { class: 'lead', text: '器具會解鎖新的飲品類別，買一次就永久擁有。點心與料理則要在「設備」購買對應的機器。' }));
+  const grid = h('div', { class: 'cards' });
+  for (const [k, t] of Object.entries(D.TOOLS).sort((a, b) => a[1].lv - b[1].lv)) {
+    const own = s.tools[k], lock = s.level < t.lv;
+    const sample = D.RECIPE_ORDER.find(id => D.RECIPES[id].tool === k);
+    const n = D.RECIPE_ORDER.filter(id => D.RECIPES[id].tool === k).length;
+    grid.appendChild(h('div', { class: 'tcard' + (lock ? ' locked' : '') + (own ? ' sel' : '') }, h('b', { text: t.name }), h('div', { class: 'art', html: itemIcon('drink', sample, 80) }), h('div', { class: 'meta' }, h('span', { text: `${t.desc}（${n} 種）` })),
+      own ? h('span', { class: 'lock', text: '已擁有' }) : lock ? h('span', { class: 'lock', html: I.lock + `Lv${t.lv} 解鎖` }) : h('button', { class: 'btn go', disabled: s.gold < t.cost, onclick: () => { if (g.buyTool(k)) { toast(`買了${t.name}！新的飲品可以進修了`, 'good'); ui.refresh(); ui.rerenderTop(); } } }, '購買 ', ic('gold'), fmt(t.cost))));
+  }
+  body.appendChild(grid);
+}
+export function openRecipeDetail(ui, kind, id, onBack) {
   const g = ui.g, s = g.s;
   modal({
-    ribbon: 'Menu', title: '菜單與器具', live: true, wide: true, tab,
-    tabs: () => [['drink', '飲品', D.RECIPE_ORDER.some(id => testReady(g, id) || (g.recipeOpen(id) && !s.recipes[id].trained))], ['side', '點心'], ['meal', '料理'], ['tools', '器具', Object.entries(D.TOOLS).some(([k, t]) => !s.tools[k] && s.level >= t.lv && s.gold >= t.cost)]],
+    ribbon: 'Recipe', title: '', cls: 'm-recipe', live: true, onClose: onBack,
     render: (body, m) => {
-      if (m.tab === 'drink') {
-        body.appendChild(h('p', { class: 'lead', text: '已學會的飲品可以在咖啡機上沖煮。賣出數量達標後可以參加評比升星（每顆星售價 +8%）。' }));
-        const list = h('div', { class: 'list' });
-        for (const id of D.RECIPE_ORDER) {
-          const r = D.RECIPES[id], rs = s.recipes[id];
-          const lock = s.level < r.lv, tool = !s.tools[r.tool];
-          const nextNeed = rs.stars < 3 ? D.STAR_SALES[rs.stars] : null;
-          let act;
-          if (lock) act = h('span', { class: 'muted', text: `Lv${r.lv}` });
-          else if (tool) act = h('span', { class: 'muted', text: `需要${D.TOOLS[r.tool].name}` });
-          else if (!rs.trained) act = h('button', { class: 'btn hot sm', onclick: () => trainRecipe(ui, id) }, '進修');
-          else if (testReady(g, id)) act = h('button', { class: 'btn blue sm', onclick: () => testRecipe(ui, id) }, '評比');
-          else act = h('div', { class: 'stars', style: 'display:flex' }, [0, 1, 2].map(i => ic(i < rs.stars ? 'star' : 'starOff')));
-          list.appendChild(h('div', { class: 'lrow' + (lock ? ' locked' : '') },
-            h('div', { class: 'lic', html: drinkIcon(id, 48) }),
-            h('div', { class: 'lmain' }, h('b', { text: r.name }), h('span', { class: 'muted', text: lock ? `Lv${r.lv} 解鎖` : `${r.steps.map(([k, n]) => D.INGS[k].name + (n > 1 ? '×' + n : '')).join(' → ')}　｜　${r.cups} 杯／${r.beans} 顆豆` + (rs.trained && nextNeed ? `　｜　已賣 ${rs.sold}/${nextNeed}` : '') })),
-            h('span', { class: 'price' }, ic('gold'), g.price(id)), act));
-        }
-        body.appendChild(list);
-      } else if (m.tab === 'side') {
-        const list = h('div', { class: 'list' });
-        for (const id of D.SIDE_ORDER) {
-          const r = D.SIDES[id], lock = s.level < r.lv;
-          list.appendChild(h('div', { class: 'lrow' }, h('div', { class: 'lic', html: sideIcon(id, 48) }), h('div', { class: 'lmain' }, h('b', { text: r.name }), h('span', { class: 'muted', text: `${D.SIDE_MACHINES[r.machine].name}　｜　${fmtTime(r.time)} 做 ${r.pcs} 份　｜　庫存 ${s.showcase[id] || 0}` })), h('span', { class: 'price' }, ic('gold'), r.price), lock ? h('span', { class: 'muted', text: `Lv${r.lv}` }) : null));
-        }
-        body.appendChild(list);
-      } else if (m.tab === 'meal') {
-        const list = h('div', { class: 'list' });
-        for (const id of D.MEAL_ORDER) {
-          const r = D.MEALS[id], lock = s.level < r.lv;
-          const stock = Object.values(s.meals).filter(b => b.item === id).reduce((a, b) => a + b.n, 0);
-          list.appendChild(h('div', { class: 'lrow' }, h('div', { class: 'lic', html: mealIcon(id, 48) }), h('div', { class: 'lmain' }, h('b', { text: r.name }), h('span', { class: 'muted', text: `${D.KITCHEN_MACHINES[r.machine].name}　｜　${fmtTime(r.time)} 做 ${r.pcs} 份　｜　庫存 ${stock}` })), h('span', { class: 'price' }, ic('gold'), r.price), lock ? h('span', { class: 'muted', text: `Lv${r.lv}` }) : null));
-        }
-        body.appendChild(list);
+      const inf = recipeInfo(g, kind, id), it = inf.it;
+      const img = m.data.img || (m.data.img = h('img', { alt: it.name }));
+      if (!m.data.req) { m.data.req = 1; dishPhoto(kind, id, true).then(u => { if (u) img.src = u; }); }
+      const stats = [];
+      const row = (k2, v) => stats.push(h('div', { class: 'rd-stat' }, h('span', { text: k2 }), h('b', {}, v)));
+      let steps = null, desc, act = null;
+      if (kind === 'drink') {
+        const rs = s.recipes[id];
+        row('售價', h('span', { class: 'price' }, ic('gold'), g.price(id)));
+        row('一批', `${it.cups} 杯`); row('耗豆', h('span', { class: 'price' }, ic('bean'), it.beans)); row('準備', fmtTime(it.prep)); row('器具', D.TOOLS[it.tool].name); row('經驗', `+${it.exp} / 杯`);
+        steps = h('div', { class: 'rd-steps' }, ...it.steps.map(([ing, n], i) => [i ? h('span', { class: 'rd-arrow', text: '›' }) : null, h('div', { class: 'rd-ing' }, h('span', { html: ingIcon(ing, 34) }), h('small', { text: D.INGS[ing].name + (n > 1 ? ' ×' + n : '') }))]));
+        desc = it.tags.map(t => TAG_ZH[t]).filter(Boolean).join('・');
+        if (!inf.lvOk) act = h('span', { class: 'lockpill', html: I.lock + `<span>等級 ${it.lv} 解鎖</span>` });
+        else if (inf.need) act = h('button', { class: 'btn', onclick: () => { ui.closeTop(); openRecipes(ui, 'tools'); } }, `需要${inf.need}`);
+        else if (!rs.trained) act = h('button', { class: 'btn hot lg', onclick: () => trainRecipe(ui, id) }, '進修學會');
+        else act = h('div', { class: 'row' }, h('div', { class: 'stars', style: 'display:flex' }, [0, 1, 2].map(i => ic(i < rs.stars ? 'star' : 'starOff'))),
+          testReady(g, id) ? h('button', { class: 'btn blue', onclick: () => testRecipe(ui, id) }, '參加評比') : h('span', { class: 'muted small', text: rs.stars < 3 ? `已賣 ${rs.sold} / ${D.STAR_SALES[rs.stars]} 杯可評比` : '已達三星' }));
       } else {
-        body.appendChild(h('p', { class: 'lead', text: '器具會解鎖新的飲品類別，買一次就永久擁有。' }));
-        const grid = h('div', { class: 'cards' });
-        for (const [k, t] of Object.entries(D.TOOLS)) {
-          const own = s.tools[k], lock = s.level < t.lv;
-          const sample = D.RECIPE_ORDER.find(id => D.RECIPES[id].tool === k);
-          grid.appendChild(h('div', { class: 'tcard' + (lock ? ' locked' : '') + (own ? ' sel' : '') }, h('b', { text: t.name }), h('div', { class: 'art', html: drinkIcon(sample, 80) }), h('div', { class: 'meta' }, h('span', { text: t.desc })),
-            own ? h('span', { class: 'lock', text: '已擁有' }) : lock ? h('span', { class: 'lock', html: I.lock + `Lv${t.lv} 解鎖` }) : h('button', { class: 'btn go', disabled: s.gold < t.cost, onclick: () => { if (g.buyTool(k)) { toast(`買了${t.name}！新的飲品可以進修了`, 'good'); ui.refresh(); } } }, '購買 ', ic('gold'), fmt(t.cost))));
-        }
-        body.appendChild(grid);
+        const mname = kind === 'side' ? D.SIDE_MACHINES[it.machine].name : D.KITCHEN_MACHINES[it.machine].name;
+        row('售價', h('span', { class: 'price' }, ic('gold'), it.price)); row('一批', `${it.pcs} 份`); row('材料費', h('span', { class: 'price' }, ic('gold'), it.cost)); row('時間', fmtTime(it.time)); row('設備', mname); row('經驗', `+${it.exp} / 份`);
+        const stock = kind === 'side' ? (s.showcase[id] || 0) : Object.values(s.meals).filter(b => b.item === id).reduce((a, b) => a + b.n, 0);
+        desc = `${mname}製作・目前庫存 ${stock} 份・累計做過 ${s.cooked[id] || 0} 份`;
+        if (!inf.lvOk) act = h('span', { class: 'lockpill', html: I.lock + `<span>等級 ${it.lv} 解鎖</span>` });
+        else if (inf.need) act = h('button', { class: 'btn go', onclick: () => { ui.closeAll(); openMachineShop(ui, 0, kind === 'side' ? 'side' : 'kitchen'); } }, `去買${inf.need}`);
+        else act = h('span', { class: 'tagok', text: inf.got ? '已上菜單' : `點吧台上的${mname}開始製作` });
       }
+      body.appendChild(h('div', { class: 'rd' },
+        h('div', { class: 'rd-photo' }, img, inf.isNew ? h('span', { class: 'bk-new', text: 'NEW' }) : null),
+        h('div', { class: 'rd-info' },
+          h('div', { class: 'rd-head' }, h('span', { class: 'bk-cat c-' + kind, text: CAT[kind][0] }), h('h3', { text: it.name })),
+          h('div', { class: 'rd-en', text: it.en || '' }),
+          h('div', { class: 'rd-desc', text: desc }),
+          steps,
+          h('div', { class: 'rd-stats' }, ...stats),
+          h('div', { class: 'rd-act' }, act))));
     },
   });
 }
@@ -185,37 +250,54 @@ export function openNeighbors(ui) {
 
 // ---------------- 自動經營 ----------------
 export function openAuto(ui) {
-  const g = ui.g, a = g.s.auto;
+  const g = ui.g, s = g.s, a = s.auto;
+  if (!s.autoOwned) s.autoOwned = {};
+  const own = s.autoOwned;
   const ROWS = [
-    ['roast', '自動烘豆', '烘好自動收成，咖啡豆不夠時自動再烘（使用上次選的豆子）'],
-    ['brew', '自動沖煮', '咖啡機賣完就自動再煮'],
-    ['side', '自動做點心', '點心烤好自動收進甜點櫃，再烤一批'],
-    ['meal', '自動料理', '料理完成自動收，用同樣的加料再做'],
-    ['cheer', '自動幫員工打氣', '元氣低於設定值就自動打氣（受每 5 分鐘 5 次限制）'],
-    ['events', '自動處理店內事件', '叫醒睡著的客人、收小費、扶正椅子、清理桌面'],
-    ['neighbors', '自動鄰居互動', '每天自動幫忙、送幸運草、收幸運草、開禮盒'],
-    ['quests', '自動領取任務獎勵', '任務完成就自動領獎'],
-    ['recruit', '自動招攬路人', '每 5 分鐘用一張傳單招攬，成功率 60%（比自己答題低）'],
-    ['special', '自動完成常客訂單', '自動做常客的特別訂單，評價固定為「合格」'],
-    ['cat', '自動餵店貓', '肚子餓時自動餵食（每次 80 金幣）'],
+    ['events', '叫醒睡著的客人、收小費、扶正椅子、清理桌面'],
+    ['roast', '烘好自動收成，咖啡豆不夠時自動再烘（使用上次選的豆子）'],
+    ['quests', '任務完成就自動領獎'],
+    ['offline', '離開遊戲時店裡繼續營業最多 12 小時，並照開啟的自動項目運作（未解鎖只算 1 小時）'],
+    ['cheer', '元氣低於設定值就自動打氣（受每 5 分鐘 5 次限制）'],
+    ['brew', '咖啡機賣完就自動再煮'],
+    ['side', '點心烤好自動收進甜點櫃，再烤一批'],
+    ['neighbors', '每天自動幫忙、送幸運草、收幸運草、開禮盒'],
+    ['cat', '肚子餓時自動餵食（每次 80 金幣）'],
+    ['meal', '料理完成自動收，用同樣的加料再做'],
+    ['delivery', '外送單自動接單、自動出貨'],
+    ['recruit', '每 5 分鐘用一張傳單招攬，成功率 60%（比自己答題低）'],
+    ['special', '自動做常客的特別訂單，評價固定為「合格」'],
   ];
+  const cost = u => u.coupon ? [ic('coupon'), String(u.coupon)] : [ic('gold'), fmt(u.gold)];
+  const can = u => u.coupon ? s.coupons >= u.coupon : s.gold >= u.gold;
   modal({
-    ribbon: 'Auto', title: '自動經營（離線時也會照設定繼續營業）', live: false, wide: true,
+    ribbon: 'Auto', title: '自動經營小幫手', live: true, wide: true,
     render: (body, m) => {
-      const master = h('div', { class: 'lrow', style: 'background:linear-gradient(#e3f4d2,#c9e8b0)' }, h('div', { class: 'lic', html: '' }), h('div', { class: 'lmain' }, h('b', { text: '總開關' }), h('span', { class: 'muted', text: '關掉後所有自動功能暫停。離線最多計算 12 小時，效率為在線的 60%。' })),
+      const n = ROWS.filter(([k]) => own[k]).length;
+      const master = h('div', { class: 'lrow', style: 'background:linear-gradient(#e3f4d2,#c9e8b0)' }, h('div', { class: 'lic', html: I.gear }),
+        h('div', { class: 'lmain' }, h('b', { text: `總開關（已聘請 ${n}/${ROWS.length} 位小幫手）` }), h('span', { class: 'muted', text: '小幫手要升級到指定等級、付一次聘請費才能使用，聘請後可以隨時開關。' })),
         h('button', { class: 'toggle' + (a.master ? ' on' : ''), onclick: () => { a.master = !a.master; m.rerender(); ui.refresh(); } }, h('i')));
-      master.querySelector('.lic').innerHTML = I.gear;
       body.appendChild(master);
-      body.appendChild(h('div', { class: 'row', style: 'margin:.6rem 0' },
-        h('button', { class: 'btn go sm', onclick: () => { ROWS.forEach(([k]) => { a[k] = true; }); a.master = true; m.rerender(); ui.refresh(); } }, '全部開啟'),
-        h('button', { class: 'btn sm', onclick: () => { ROWS.forEach(([k]) => { a[k] = false; }); m.rerender(); ui.refresh(); } }, '全部關閉')));
-      const list = h('div', { class: 'list' });
-      for (const [k, name, desc] of ROWS) {
+      const list = h('div', { class: 'list', style: 'margin-top:.6rem' });
+      for (const [k, desc] of ROWS) {
+        const u = D.AUTO_UNLOCK[k];
         const extra = [];
-        if (k === 'brew') extra.push(h('div', { class: 'seg' }, h('button', { class: a.brewMode === 'smart' ? 'on' : '', onclick: () => { a.brewMode = 'smart'; m.rerender(); } }, '挑最賺的'), h('button', { class: a.brewMode === 'fixed' ? 'on' : '', onclick: () => { a.brewMode = 'fixed'; m.rerender(); } }, '固定上次的')));
-        if (k === 'cheer') extra.push(h('span', { class: 'small', text: `低於 ${a.cheerAt}%` }), h('input', { type: 'range', min: 10, max: 90, step: 5, value: a.cheerAt, oninput: ev => { a.cheerAt = +ev.target.value; ev.target.previousSibling.textContent = `低於 ${a.cheerAt}%`; } }));
-        list.appendChild(h('div', { class: 'lrow' }, h('div', { class: 'lmain' }, h('b', { text: name }), h('span', { class: 'muted', text: desc })), ...extra,
-          h('button', { class: 'toggle' + (a[k] ? ' on' : ''), onclick: () => { a[k] = !a[k]; if (a[k]) a.master = true; m.rerender(); ui.refresh(); } }, h('i'))));
+        let right;
+        if (own[k]) {
+          if (k === 'brew') extra.push(h('div', { class: 'seg' }, h('button', { class: a.brewMode === 'smart' ? 'on' : '', onclick: () => { a.brewMode = 'smart'; m.rerender(); } }, '挑最賺的'), h('button', { class: a.brewMode === 'fixed' ? 'on' : '', onclick: () => { a.brewMode = 'fixed'; m.rerender(); } }, '固定上次的')));
+          if (k === 'cheer') extra.push(h('span', { class: 'small', text: `低於 ${a.cheerAt}%` }), h('input', { type: 'range', min: 10, max: 90, step: 5, value: a.cheerAt, oninput: ev => { a.cheerAt = +ev.target.value; ev.target.previousSibling.textContent = `低於 ${a.cheerAt}%`; } }));
+          right = k === 'offline' ? h('span', { class: 'tagok', text: '已解鎖' }) : h('button', { class: 'toggle' + (a[k] ? ' on' : ''), onclick: () => { a[k] = !a[k]; if (a[k]) a.master = true; m.rerender(); ui.refresh(); } }, h('i'));
+        } else if (s.level < u.lv) {
+          right = h('span', { class: 'lockpill', html: I.lock + `<span>Lv${u.lv}</span>` });
+        } else {
+          right = h('button', { class: 'btn go sm', disabled: !can(u), onclick: () => {
+            if (!can(u)) return;
+            if (u.coupon) s.coupons -= u.coupon; else s.gold -= u.gold;
+            own[k] = true; if (k !== 'offline') { a[k] = true; a.master = true; }
+            sfx('level'); toast(`聘請了「自動${u.name}」小幫手！`, 'good'); g.touch(); m.rerender(); ui.refresh();
+          } }, '聘請 ', ...cost(u));
+        }
+        list.appendChild(h('div', { class: 'lrow' + (own[k] ? '' : ' dim') }, h('div', { class: 'lmain' }, h('b', { text: '自動' + u.name }), h('span', { class: 'muted', text: desc })), ...extra, right));
       }
       body.appendChild(list);
       body.appendChild(h('div', { class: 'row', style: 'margin-top:.7rem' }, h('b', { text: '保留金幣：' }), h('span', { class: 'muted small', text: '自動功能花錢時，至少保留這麼多金幣' }),
@@ -327,9 +409,9 @@ export function showLevelUp(ui, from, lv, bonus) {
         for (const [k, id, nm] of un.slice(0, 12)) {
           const u = h('div', { class: 'unl' }, h('div', { class: 'uimg' }), h('span', { text: nm }));
           const img = u.firstChild;
-          if (k === 'drink') img.innerHTML = drinkIcon(id, 54);
-          else if (k === 'side') img.innerHTML = sideIcon(id, 54);
-          else if (k === 'meal') img.innerHTML = mealIcon(id, 54);
+          if (k === 'drink') img.innerHTML = itemIcon('drink', id, 54);
+          else if (k === 'side') img.innerHTML = itemIcon('side', id, 54);
+          else if (k === 'meal') img.innerHTML = itemIcon('meal', id, 54);
           else if (k === 'roast') img.innerHTML = I.bean;
           else ui.furnArt(id).then(src => { if (src) img.innerHTML = `<img src="${src}" alt="">`; });
           box.appendChild(u);
@@ -355,7 +437,7 @@ export function showOffline(ui, sum) {
         h('div', {}, h('div', { class: 'big' }, ic('cake'), fmt(sum.sides)), h('small', { text: '賣出點心' })),
         h('div', {}, h('div', { class: 'big' }, ic('meal'), fmt(sum.meals)), h('small', { text: '賣出料理' })),
         h('div', {}, h('div', { class: 'big' }, ic('smoke'), fmt(sum.burnt)), h('small', { text: '燒焦（沒開自動收成）' }))));
-      body.append(h('p', { class: 'lead center', style: 'margin-top:.7rem', text: '想讓店裡在你不在時賺更多？打開「自動經營」，或出門前把咖啡機都煮滿。' }));
+      body.append(h('p', { class: 'lead center', style: 'margin-top:.7rem', text: sum.full ? '自動小幫手會照你的設定繼續營業。出門前把咖啡機都煮滿，可以賣更多。' : '目前離線只會結算 1 小時。到「自動經營」聘請「自動離線營業」小幫手，就能離線營業 12 小時。' }));
       body.append(h('div', { class: 'row center' }, h('button', { class: 'btn go lg', onclick: () => ui.closeTop() }, '開始營業')));
     },
   });

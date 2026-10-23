@@ -66,6 +66,7 @@ export function defaultState() {
     daily: { day: '', list: [], bonus: false },
     loginDay: '',
     stats: { sold: 0, sideSold: 0, mealSold: 0, earned: 0, roastStart: 0, roastCollect: 0, brewStart: 0, sideStart: 0, sideCollect: 0, mealStart: 0, mealCollect: 0, recruitTry: 0, recruitOk: 0, help: 0, cloverSend: 0, wake: 0, chairFix: 0, special: 0, drag: 0, trained: 0, tests: 0, tips: 0, placed: 0, burnt: 0, truck: 0 },
+    autoOwned: {}, cooked: {}, seenRecipes: {},
     auto: { master: true, roast: false, brew: false, brewMode: 'smart', side: false, meal: false, cheer: false, cheerAt: 25, events: false, neighbors: false, quests: false, recruit: false, special: false, cat: false, keepGold: 300 },
     cat: null,
     truck: { day: '', orders: [], tokens: 0 },

@@ -9,6 +9,8 @@ import * as P from './ui/panels.js';
 import { openCat } from './ui/cat.js';
 import { setSound, setMusic, sfx, unlockAudio } from './audio.js';
 import { initThumbs } from '../js3d/thumbs.js';
+import { initDishes } from '../js3d/dishes.js';
+import { extraTick } from './extra.js';
 import { loadOverrides } from '../js3d/sprites.js';
 import { CatAI, catTick } from './cat.js';
 import { claimAll } from './quests.js';
@@ -64,6 +66,7 @@ async function boot() {
   world.catAI = catAI;
   world.engine.quality = state.settings.quality;
   initThumbs(world.engine);
+  initDishes(world.engine);
   const resize = () => { world.engine.resize(window.innerWidth, window.innerHeight); };
   window.addEventListener('resize', resize); resize();
   world.sync();
@@ -95,7 +98,7 @@ async function boot() {
     catAI.update(dt);
     if (game.s.cat) catTick(game, game.s.cat);
     autoAcc += dt;
-    if (autoAcc > 1.5) { autoAcc = 0; auto.run(now(), false); }
+    if (autoAcc > 1.5) { autoAcc = 0; extraTick(game); auto.run(now(), false); }
     acc += dt;
     if (acc > 0.25) { acc = 0; ui.refresh(); }
     if (!window.__noRender) { world.frame(); world.engine.render(); }
